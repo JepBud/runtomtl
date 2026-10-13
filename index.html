@@ -1,0 +1,1456 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d6a47">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230d6a47'/%3E%3Cpath d='M14 46 L30 18 L38 32 L44 24 L52 46 Z' fill='%23fff'/%3E%3C/svg%3E">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,-apple-system,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>RunToMTL Race Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: phone-first single column; a highway-sign panel for the live leg, cards below, fixed bottom tab bar. */
+:root {
+  --bg: #eef2ef; --surface: #ffffff; --surface-2: #f6f8f6; --ink: #13201a; --muted: #5a6a61; --line: #d4ddd7;
+  --sign: #0d6a47; --sign-2: #0a5639; --sign-ink: #ffffff; --sign-dim: #bfe0cf;
+  --ok: #1d8a4b; --warn: #a96d00; --bad: #c03a2b; --warn-bg: #fff3d9; --bad-bg: #fde7e4; --ok-bg: #e2f4e9;
+  --ga: #2c5cb0; --ga-bg: #e3ebf9; --gb: #a5492a; --gb-bg: #f8e6df; --gs: #6b5a9c; --gs-bg: #ece8f7;
+  --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0c1310; --surface: #141e19; --surface-2: #19251f; --ink: #e5eee8; --muted: #8fa298; --line: #24332b;
+  --sign: #0f6e4a; --sign-2: #0b5739; --sign-ink: #f4fbf7; --sign-dim: #a9d6bf;
+  --ok: #45c07c; --warn: #e5a630; --bad: #f0705f; --warn-bg: #33270d; --bad-bg: #3a1a16; --ok-bg: #12301f;
+  --ga: #7ea3ee; --ga-bg: #1a2742; --gb: #ec9573; --gb-bg: #3a2119; --gs: #b3a3e6; --gs-bg: #29223f;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0c1310; --surface: #141e19; --surface-2: #19251f; --ink: #e5eee8; --muted: #8fa298; --line: #24332b;
+  --sign: #0f6e4a; --sign-2: #0b5739; --sign-ink: #f4fbf7; --sign-dim: #a9d6bf;
+  --ok: #45c07c; --warn: #e5a630; --bad: #f0705f; --warn-bg: #33270d; --bad-bg: #3a1a16; --ok-bg: #12301f;
+  --ga: #7ea3ee; --ga-bg: #1a2742; --gb: #ec9573; --gb-bg: #3a2119; --gs: #b3a3e6; --gs-bg: #29223f;
+  color-scheme: dark; }
+html, body { background: var(--bg); color: var(--ink); }
+body { font-family: var(--body); font-size: 15px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+* { box-sizing: border-box; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--sign); outline-offset: 2px; }
+.wrap { max-width: 720px; margin: 0 auto; padding: 0 16px; padding-block: 0 96px; }
+.num, .clock, td, .tile b { font-variant-numeric: tabular-nums; }
+
+header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); }
+header.top .in { max-width: 720px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 12px; }
+.brand { font-family: var(--display); font-weight: 700; font-size: 20px; letter-spacing: .02em; text-transform: uppercase; }
+.brand span { color: var(--sign); }
+.raceclock { margin-left: auto; text-align: right; font-family: var(--display); font-size: 20px; font-weight: 600; line-height: 1.1; }
+.raceclock small { display: block; font-family: var(--body); font-size: 11px; color: var(--muted); font-weight: 400; letter-spacing: .04em; text-transform: uppercase; }
+.sync { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none; }
+.sync.pending { background: var(--warn); }
+.sync.off { background: var(--bad); }
+.lockbtn { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 10px; font-size: 12px; font-weight: 700; color: var(--muted); white-space: nowrap; }
+.lockbtn.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.notebtn { margin-top: 8px; border: 1px dashed color-mix(in srgb, var(--sign-ink) 50%, transparent); background: transparent; color: var(--sign-ink); border-radius: 8px; padding: 4px 10px; font-size: 13px; font-weight: 700; }
+.extras .notebtn { margin-top: 2px; justify-self: start; }
+.lnote, .row .t .lnote { display: block; width: fit-content; font-size: 13px; color: var(--ink); background: var(--warn-bg); border-radius: 6px; padding: 2px 6px; margin-top: 3px; max-width: 100%; white-space: normal; }
+.prow .nbtn { border: 0; background: transparent; color: var(--sign); font-weight: 700; font-size: 12px; padding: 2px 0; margin-left: 6px; }
+textarea.note { width: 100%; min-height: 120px; border: 1px solid var(--line); border-radius: 8px; padding: 10px; background: var(--surface); color: var(--ink); font: inherit; }
+
+.banner { margin-top: 12px; padding: 10px 12px; border-radius: var(--r); background: var(--warn-bg); color: var(--ink); font-size: 14px; }
+
+h2.sec { font-family: var(--display); font-weight: 600; font-size: 15px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 22px 0 8px; }
+
+/* The live leg, styled as a highway guide sign */
+.sign { margin-top: 14px; background: var(--sign); color: var(--sign-ink); border-radius: 14px; padding: 16px 18px 14px; border: 3px solid var(--sign-2); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--sign-ink) 55%, transparent); }
+.sign .meta { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; font-family: var(--display); font-weight: 600; font-size: 16px; letter-spacing: .06em; text-transform: uppercase; color: var(--sign-dim); }
+.sign .meta .legno { background: var(--sign-ink); color: var(--sign); padding: 1px 8px; border-radius: 4px; font-weight: 700; }
+.sign h1 { font-family: var(--display); font-weight: 700; font-size: clamp(30px, 8vw, 42px); line-height: 1.02; margin: 8px 0 2px; text-wrap: balance; }
+.sign .dest { color: var(--sign-dim); font-size: 14px; }
+.extras { margin-top: 10px; padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--sign-ink) 12%, transparent); font-size: 13px; display: grid; gap: 4px; }
+.extras .links { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.extras a { color: var(--sign-ink); font-weight: 700; }
+.sign .runrow { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+.sign .lbl { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--sign-dim); }
+.sign .runner { font-family: var(--display); font-weight: 700; font-size: 30px; line-height: 1; }
+.sign .clock { font-family: var(--display); font-weight: 600; font-size: 44px; line-height: 1; }
+.bar { height: 8px; background: color-mix(in srgb, var(--sign-ink) 22%, transparent); border-radius: 4px; margin-top: 12px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--sign-ink); border-radius: 4px; }
+.bar.over i { background: var(--warn); }
+.sign .eta { margin-top: 8px; font-size: 14px; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.sign .eta b { font-weight: 700; }
+
+.actions { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 8px; margin-top: 10px; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: var(--r); padding: 12px 10px; font-weight: 700; min-height: 48px; }
+.btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); font-size: 16px; }
+.btn.quiet { background: transparent; }
+.btn.danger { color: var(--bad); border-color: var(--bad); background: transparent; }
+.btn.sm { min-height: 36px; padding: 6px 10px; font-size: 14px; }
+.btn:disabled { opacity: .45; cursor: default; }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin-top: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; min-width: 0; }
+.card .k { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.card .v { font-family: var(--display); font-weight: 700; font-size: 28px; line-height: 1.1; margin-top: 2px; }
+.card .s { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.pill.ok { background: var(--ok-bg); color: var(--ok); } .pill.warn { background: var(--warn-bg); color: var(--warn); } .pill.bad { background: var(--bad-bg); color: var(--bad); }
+.g { display: inline-block; padding: 0 7px; border-radius: 4px; font-size: 12px; font-weight: 700; font-family: var(--body); letter-spacing: 0; text-transform: none; }
+.g.A { background: var(--ga-bg); color: var(--ga); } .g.B { background: var(--gb-bg); color: var(--gb); } .g.S { background: var(--gs-bg); color: var(--gs); }
+
+/* Route strip: one cell per official leg, grouped by block */
+.strip { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.blk { display: flex; gap: 2px; padding: 3px; border-radius: 6px; }
+.blk.A { background: var(--ga-bg); } .blk.B { background: var(--gb-bg); }
+.cell { width: 14px; height: 18px; border-radius: 3px; background: var(--surface); border: 1px solid var(--line); }
+.cell.done { background: var(--sign); border-color: var(--sign); }
+.cell.partial { background: color-mix(in srgb, var(--sign) 50%, var(--surface)); border-color: var(--sign); }
+.cell.active { background: var(--warn); border-color: var(--warn); }
+.cell.block { background: repeating-linear-gradient(45deg, var(--warn) 0 3px, var(--surface) 3px 6px); border-color: var(--warn); }
+.sign.est { background: var(--sign-2); border-style: dashed; }
+.cell.skipped { background: repeating-linear-gradient(45deg, var(--line) 0 3px, transparent 3px 6px); }
+.cell.ferry { box-shadow: inset 0 -4px 0 var(--ga); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); margin-top: 8px; align-items: center; }
+.legend .cell { display: inline-block; vertical-align: middle; margin-right: 4px; width: 10px; height: 13px; }
+
+.list { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.row { display: grid; grid-template-columns: 44px 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; border-top: 1px solid var(--line); }
+.row:first-child { border-top: 0; }
+.row .n { font-family: var(--display); font-weight: 700; font-size: 20px; color: var(--muted); }
+.row .t { min-width: 0; }
+.row .t b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .t span { font-size: 13px; color: var(--muted); }
+.row .r { text-align: right; font-size: 14px; }
+.row .r b { font-family: var(--display); font-size: 18px; }
+.row .r b.pace { color: var(--sign); margin-left: 6px; }
+.row.swap { background: var(--surface-2); font-size: 13px; color: var(--muted); grid-template-columns: 1fr; padding: 6px 12px; }
+button.row { width: 100%; text-align: left; background: transparent; border: 0; border-top: 1px solid var(--line); }
+
+/* Plan & team */
+.field { display: grid; gap: 4px; min-width: 0; }
+.field label { font-size: 12px; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+.field input, .field select { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 9px 10px; min-height: 42px; width: 100%; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.hint { font-size: 13px; color: var(--muted); }
+.bhead { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--surface-2); border-top: 1px solid var(--line); flex-wrap: wrap; }
+.bhead:first-child { border-top: 0; }
+.bhead .ttl { font-family: var(--display); font-weight: 700; font-size: 18px; margin-right: auto; }
+.stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.stepper button { border: 0; background: var(--surface); width: 34px; height: 32px; font-weight: 700; }
+.stepper span { padding: 0 8px; font-size: 13px; }
+.prow { display: grid; grid-template-columns: 36px 1fr minmax(110px, 40%); gap: 8px; align-items: center; padding: 8px 12px; border-top: 1px solid var(--line); }
+.prow select { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 6px 8px; min-height: 38px; width: 100%; min-width: 0; }
+.trow { display: grid; grid-template-columns: 1fr 92px 84px 36px; gap: 8px; align-items: center; padding: 8px 12px; border-top: 1px solid var(--line); }
+.trow:first-child { border-top: 0; }
+.trow input, .trow select { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 6px 8px; min-height: 38px; width: 100%; min-width: 0; }
+.trow .x { border: 0; background: transparent; color: var(--muted); font-size: 20px; }
+
+/* Results */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px; }
+.tile span { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.tile b { display: block; font-family: var(--display); font-size: 28px; line-height: 1.1; }
+.tbl { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { padding: 8px 10px; text-align: right; border-top: 1px solid var(--line); white-space: nowrap; }
+th { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-top: 0; font-weight: 700; }
+th:first-child, td:first-child { text-align: left; }
+tr.hl td { font-weight: 700; }
+
+/* Bottom tabs */
+nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
+nav.tabs .in { max-width: 720px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, 1fr); }
+nav.tabs button { border: 0; background: transparent; padding: 10px 2px 12px; font-family: var(--display); font-weight: 600; font-size: 15px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-top: 3px solid transparent; }
+nav.tabs button[aria-current="page"] { color: var(--ink); border-top-color: var(--sign); }
+
+/* Sheet */
+.scrim { position: fixed; inset: 0; background: color-mix(in srgb, #000 45%, transparent); z-index: 10; display: flex; align-items: flex-end; justify-content: center; }
+.sheet { background: var(--surface); width: 100%; max-width: 560px; border-radius: 16px 16px 0 0; padding: 18px 16px; padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); max-height: 88vh; overflow-y: auto; display: grid; gap: 14px; }
+.sheet h3 { font-family: var(--display); font-weight: 700; font-size: 24px; margin: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); background: var(--surface-2); border-radius: 999px; padding: 8px 14px; font-weight: 700; min-height: 40px; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.chip small { font-weight: 400; opacity: .7; margin-left: 4px; }
+.sheet .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.frow { display: grid; grid-template-columns: 28px 1fr 64px 76px 28px; gap: 6px; align-items: center; }
+.frow.head { font-size: 11px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+.frow .n { font-family: var(--display); font-weight: 700; font-size: 18px; color: var(--muted); }
+.frow select, .frow input { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 6px; min-height: 38px; width: 100%; min-width: 0; }
+.frow .x { border: 0; background: transparent; color: var(--muted); font-size: 20px; }
+.check { display: flex; gap: 8px; align-items: center; }
+.empty { text-align: center; padding: 28px 16px; color: var(--muted); }
+.empty b { display: block; color: var(--ink); font-family: var(--display); font-size: 22px; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(76px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; z-index: 20; font-weight: 700; font-size: 14px; max-width: calc(100% - 32px); }
+@media (prefers-reduced-motion: no-preference) { .bar i { transition: width .8s linear; } }
+@media (max-width: 420px) { .trow { grid-template-columns: 1fr 70px 70px 28px; } .actions { grid-template-columns: 1fr 1fr; } .actions .btn.primary { grid-column: 1 / -1; } }
+</style>
+</head>
+<body>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0/dist/umd/supabase.js"></script>
+
+
+<header class="top"><div class="in">
+  <div class="brand">RunTo<span>MTL</span> <span id="yr" class="num"></span></div>
+  <span id="sync" class="sync" title="Sync status"></span>
+  <button id="lockbtn" class="lockbtn" data-act="lock" hidden></button>
+  <div class="raceclock" id="raceclock"></div>
+</div></header>
+<main class="wrap" id="main"></main>
+<nav class="tabs" aria-label="Sections"><div class="in">
+  <button data-tab="live">Live</button><button data-tab="plan">Plan</button><button data-tab="team">Team</button><button data-tab="log">Log</button><button data-tab="results">Results</button>
+</div></nav>
+<div id="sheet"></div>
+<div id="toast"></div>
+
+<script>
+// RunToMTL tracker core: pure functions, no DOM. Times are epoch ms, paces are sec/km.
+const Core = (() => {
+  const BLOCK = 5;
+  const MIN = 60000;
+
+  function buildBlocks(nLegs, cfg) {
+    const lens = (cfg && cfg.blockLens) || {};
+    const groups = (cfg && cfg.blockGroups) || {};
+    const first = (cfg && cfg.firstGroup) || 'A';
+    const other = first === 'A' ? 'B' : 'A';
+    const out = [];
+    let leg = 1, i = 0;
+    while (leg <= nLegs) {
+      const want = lens[i] != null ? Number(lens[i]) : BLOCK;
+      const len = Math.max(1, Math.min(BLOCK, want || BLOCK));
+      const end = Math.min(nLegs, leg + len - 1);
+      out.push({ i, start: leg, end, len: end - leg + 1, group: groups[i] || (i % 2 === 0 ? first : other) });
+      leg = end + 1; i++;
+    }
+    return out;
+  }
+  const blockOf = (blocks, n) => blocks.find(b => n >= b.start && n <= b.end) || null;
+
+  function runSec(r) {
+    if (r.movingSec) return Number(r.movingSec);
+    if (r.start && r.end) return (r.end - r.start) / 1000;
+    return 0;
+  }
+  const runKm = r => Number(r.actualKm) || Number(r.km) || 0;
+
+  function legRuns(runs) {
+    const m = {};
+    runs.forEach(r => { (m[r.leg] = m[r.leg] || []).push(r); });
+    Object.values(m).forEach(a => a.sort((x, y) => x.start - y.start));
+    return m;
+  }
+
+  const isBlock = r => r.kind === 'block';
+  const lastLegOf = r => isBlock(r) ? r.endLeg : r.leg;
+
+  function legStatus(legs, runs) {
+    const normal = runs.filter(r => !isBlock(r));
+    const byLeg = legRuns(normal);
+    const cov = {};
+    runs.filter(isBlock).forEach(r => { for (let n = r.leg; n <= r.endLeg; n++) cov[n] = r; });
+    const maxLeg = runs.reduce((a, r) => Math.max(a, lastLegOf(r)), 0);
+    const st = {};
+    legs.forEach(l => {
+      const rs = byLeg[l.n] || [];
+      const kmDone = rs.filter(r => r.end).reduce((a, r) => a + (Number(r.km) || 0), 0);
+      let s = 'upcoming', est = false;
+      if (rs.some(r => !r.end)) s = 'active';
+      else if (rs.some(r => r.legDone)) s = 'done';
+      else if (rs.length) s = 'partial';
+      else if (cov[l.n]) { s = cov[l.n].end ? 'done' : 'block'; est = true; }
+      else if (l.n < maxLeg) s = 'skipped';
+      st[l.n] = { s, est, runs: rs, kmDone, cover: cov[l.n] || null };
+    });
+    return st;
+  }
+
+  // Which leg should run next, from the run log alone.
+  function nextLeg(runs) {
+    if (!runs.length) return 1;
+    const last = runs.reduce((a, r) => (!a || (r.end || 0) > (a.end || 0) ? r : a), null);
+    return last.legDone ? lastLegOf(last) + 1 : lastLegOf(last);
+  }
+
+  function paceFor(id, d) {
+    const rr = d.runners.find(r => r.id === id);
+    const conf = (rr && Number(rr.paceSec)) || 300;
+    let sec = 0, km = 0, n = 0;
+    d.runs.forEach(r => {
+      if (r.runner !== id || !r.end) return;
+      const k = runKm(r), s = runSec(r);
+      if (k > 0.3 && s / k >= 150 && s / k <= 900) { sec += s; km += k; n++; }
+    });
+    let p = conf;
+    if (n === 1) p = (conf + sec / km) / 2;
+    else if (n > 1) p = sec / km;
+    return p * (1 + (Number(d.cfg.paceAdjPct) || 0) / 100);
+  }
+
+  function groupPace(group, d) {
+    const ps = d.runners.filter(r => r.group === group && r.active !== false).map(r => paceFor(r.id, d));
+    return ps.length ? ps.reduce((a, b) => a + b, 0) / ps.length : 300 * (1 + (Number(d.cfg.paceAdjPct) || 0) / 100);
+  }
+
+  function parseSailings(cfg) {
+    return String(cfg.ferrySailings || '').split(/[\s,;]+/).map(s => s.trim()).filter(s => /^\d{1,2}:\d{2}$/.test(s))
+      .map(s => { const [h, m] = s.split(':').map(Number); return h * 60 + m; }).sort((a, b) => a - b);
+  }
+
+  // When does the next leg start, given the team reaches the ferry dock at `arrival`?
+  function ferryAfter(arrival, cfg) {
+    const sail = parseSailings(cfg);
+    const board = (Number(cfg.ferryBoardMin) || 10) * MIN;
+    const cross = (Number(cfg.ferryCrossMin) || 20) * MIN;
+    if (!sail.length) {
+      return { arrival, depart: null, missed: null, start: arrival + (Number(cfg.ferryGapMin) || 21) * MIN, slackMin: null };
+    }
+    const day = new Date(arrival); day.setHours(0, 0, 0, 0);
+    const times = [];
+    for (let k = -1; k <= 1; k++) sail.forEach(m => times.push(day.getTime() + k * 1440 * MIN + m * MIN));
+    const ready = arrival + board;
+    const idx = times.findIndex(t => t >= ready);
+    const depart = times[idx];
+    const missed = idx > 0 ? times[idx - 1] : null;
+    return { arrival, depart, missed, start: depart + cross, slackMin: Math.round((depart - ready) / MIN) };
+  }
+
+  function suggestRunner(n, d, blocks, excludeId, extra) {
+    const plan = (d.cfg.plan || {})[n];
+    if (plan && plan !== excludeId) return plan;
+    const b = blockOf(blocks, n);
+    if (!b) return null;
+    const planAll = d.cfg.plan || {};
+    const crew = [];
+    for (let k = b.start; k <= b.end; k++) if (planAll[k] && !crew.includes(planAll[k])) crew.push(planAll[k]);
+    const act = r => r.active !== false && r.id !== excludeId;
+    let pool = d.runners.filter(r => act(r) && crew.includes(r.id));
+    if (!pool.length) pool = d.runners.filter(r => act(r) && r.group === b.group);
+    if (!pool.length) pool = d.runners.filter(act);
+    if (!pool.length) return null;
+    const count = id => d.runs.filter(r => r.runner === id && r.leg >= b.start && r.leg <= b.end).length + ((extra && extra[b.i + ':' + id]) || 0);
+    const order = d.runners.map(r => r.id);
+    pool.sort((x, y) => count(x.id) - count(y.id) || order.indexOf(x.id) - order.indexOf(y.id));
+    return pool[0].id;
+  }
+
+  // Projection of every leg: actual where tapped, estimated where not.
+  function project(d, now) {
+    const legs = d.legs, N = legs.length;
+    const blocks = buildBlocks(N, d.cfg);
+    const st = legStatus(legs, d.runs);
+    const ferryLeg = Number(d.cfg.ferryLeg) || 0;
+    const legOf = n => legs.find(l => l.n === n);
+    const proj = {};
+    const extra = {};
+    let ferry = null;
+
+    // Estimate legs from..to starting at time t; writes into `into`, returns the end time.
+    function fill(into, from, to, t, prevRunner, floorNow) {
+      for (let n = from; n <= to; n++) {
+        const pf = into[ferryLeg] || proj[ferryLeg];
+        if (n === ferryLeg + 1 && pf) {
+          const f = ferryAfter(pf.end, d.cfg);
+          if (into === proj) ferry = f;
+          t = Math.max(f.start, floorNow && n === from ? now : 0);
+        }
+        const l = legOf(n); if (!l) continue;
+        const s = st[n];
+        const km = Math.max(0, l.km - (s ? s.kmDone : 0));
+        const b = blockOf(blocks, n);
+        const who = suggestRunner(n, d, blocks, prevRunner, extra);
+        if (who && b) extra[b.i + ':' + who] = (extra[b.i + ':' + who] || 0) + 1;
+        const planned = (d.cfg.plan || {})[n] || null;
+        const pace = planned ? paceFor(planned, d) : groupPace(b ? b.group : 'A', d);
+        into[n] = { start: t, end: t + km * pace * 1000, est: true, runner: planned, suggested: who, pace };
+        prevRunner = who;
+        t = into[n].end;
+      }
+      return { t, prevRunner };
+    }
+
+    legs.forEach(l => {
+      const s = st[l.n];
+      if (s.s === 'done' && !s.est) proj[l.n] = { start: s.runs[0].start, end: Math.max(...s.runs.map(r => r.end)), actual: true };
+    });
+    // Finished estimate-mode blocks: spread their real elapsed time across the legs.
+    d.runs.filter(r => isBlock(r) && r.end).forEach(r => {
+      const tmp = {};
+      fill(tmp, r.leg, r.endLeg, r.start, null, false);
+      const raw = (tmp[r.endLeg] ? tmp[r.endLeg].end : r.end) - r.start;
+      const k = raw > 0 ? (r.end - r.start) / raw : 1;
+      for (let n = r.leg; n <= r.endLeg; n++) if (tmp[n] && st[n].s === 'done' && st[n].est) {
+        proj[n] = { ...tmp[n], start: r.start + (tmp[n].start - r.start) * k, end: r.start + (tmp[n].end - r.start) * k, actual: true, estimated: true };
+      }
+    });
+
+    const activeRun = d.runs.find(r => r.start && !r.end) || null;
+    let active = null, t, from, prevRunner = null;
+    if (activeRun && isBlock(activeRun)) {
+      const r = fill(proj, activeRun.leg, activeRun.endLeg, activeRun.start, null, false);
+      let cur = activeRun.endLeg;
+      for (let n = activeRun.leg; n <= activeRun.endLeg; n++) if (proj[n] && proj[n].end > now) { cur = n; break; }
+      const overdue = now > r.t;
+      if (overdue) proj[activeRun.endLeg].end = now;
+      for (let n = activeRun.leg; n <= activeRun.endLeg; n++) if (proj[n]) proj[n].blockRun = true;
+      active = { ...activeRun, block: true, curLeg: cur, overdue };
+      t = proj[activeRun.endLeg].end; from = activeRun.endLeg + 1; prevRunner = r.prevRunner;
+    } else if (activeRun) {
+      const l = legOf(activeRun.leg);
+      const rem = Math.max(0, (l ? l.km : 0) - st[activeRun.leg].kmDone);
+      let end = activeRun.start + rem * paceFor(activeRun.runner, d) * 1000;
+      const overdue = now > end;
+      if (overdue) end = now;
+      proj[activeRun.leg] = { start: st[activeRun.leg].runs[0].start, end, live: true, overdue, runner: activeRun.runner };
+      active = activeRun;
+      t = end; from = activeRun.leg + 1; prevRunner = activeRun.runner;
+    } else if (d.runs.length) {
+      const last = d.runs.reduce((a, r) => (!a || (r.end || 0) > (a.end || 0) ? r : a), null);
+      from = nextLeg(d.runs);
+      t = Math.max(last.end || now, now);
+    } else {
+      from = 1;
+      t = d.cfg.start && d.cfg.start > now ? d.cfg.start : now;
+    }
+    fill(proj, from, N, t, prevRunner, !activeRun);
+    if (!ferry && ferryLeg && proj[ferryLeg] && proj[ferryLeg + 1] && !proj[ferryLeg + 1].est) ferry = { arrival: proj[ferryLeg].end, done: true };
+    const finish = proj[N] ? proj[N].end : null;
+    return { blocks, st, proj, active, ferry, finish };
+  }
+
+  function fmtDur(sec) {
+    sec = Math.max(0, Math.round(sec));
+    const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+    return (h ? h + ':' + String(m).padStart(2, '0') : String(m)) + ':' + String(s).padStart(2, '0');
+  }
+  const fmtPace = p => (p > 0 && isFinite(p)) ? Math.floor(p / 60) + ':' + String(Math.round(p % 60)).padStart(2, '0') : '–';
+  function parsePace(s) {
+    const m = String(s).trim().match(/^(\d{1,2}):(\d{2})$/);
+    return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+  }
+
+  function summary(d) {
+    const legs = d.legs;
+    const done = d.runs.filter(r => r.end && !isBlock(r));
+    const est = d.runs.filter(r => r.end && isBlock(r));
+    const per = {};
+    d.runners.forEach(r => { per[r.id] = { id: r.id, name: r.name, group: r.group, runs: 0, legs: new Set(), km: 0, sec: 0, best: null }; });
+    done.forEach(r => {
+      const p = per[r.runner]; if (!p) return;
+      const k = runKm(r), s = runSec(r);
+      p.runs++; p.legs.add(r.leg); p.km += k; p.sec += s;
+      const q = per[r.partner]; if (q && r.partner !== r.runner) { q.runs++; q.legs.add(r.leg); q.km += k; q.sec += s; }
+      if (k > 2 && s > 0) { const pc = s / k; if (!p.best || pc < p.best.pace) p.best = { pace: pc, leg: r.leg }; }
+    });
+    const rows = Object.values(per).filter(p => p.runs).map(p => ({ ...p, legs: p.legs.size, pace: p.km ? p.sec / p.km : null }))
+      .sort((a, b) => b.km - a.km);
+    const legKm = n => { const l = legs.find(x => x.n === n); return l ? l.km : 0; };
+    let estKm = 0, estSec = 0;
+    est.forEach(r => { for (let n = r.leg; n <= r.endLeg; n++) estKm += legKm(n); estSec += (r.end - r.start) / 1000; });
+    const km = done.reduce((a, r) => a + runKm(r), 0) + estKm;
+    const sec = done.reduce((a, r) => a + runSec(r), 0) + estSec;
+    const first = d.runs.length ? Math.min(...d.runs.map(r => r.start)) : null;
+    const ended = d.runs.filter(r => r.end);
+    const last = ended.length ? Math.max(...ended.map(r => r.end)) : null;
+    const st = legStatus(legs, d.runs);
+    const skippedKm = legs.filter(l => st[l.n].s === 'skipped').reduce((a, l) => a + l.km, 0);
+    const legsDone = legs.filter(l => st[l.n].s === 'done').length;
+    const fl = Number(d.cfg.ferryLeg) || 0;
+    let toFerry = null;
+    if (fl && st[fl] && st[fl].s === 'done') {
+      const P = project(d, Date.now());
+      let fkm = done.filter(r => r.leg <= fl).reduce((a, r) => a + runKm(r), 0);
+      est.forEach(r => { for (let n = r.leg; n <= Math.min(fl, r.endLeg); n++) fkm += legKm(n); });
+      toFerry = { km: fkm, sec: (P.proj[fl].end - first) / 1000 };
+      toFerry.pace = toFerry.sec / toFerry.km;
+    }
+    return { rows, estKm, estSec, estBlocks: est.length, km, sec, pace: km ? sec / km : null, elapsed: first && last ? (last - first) / 1000 : 0, first, last, skippedKm, legsDone, toFerry };
+  }
+
+  return { isBlock, nextLeg, lastLegOf, buildBlocks, blockOf, legStatus, paceFor, groupPace, ferryAfter, parseSailings, suggestRunner, project, summary, fmtDur, fmtPace, parsePace, runKm, runSec };
+})();
+
+</script>
+<script>
+(() => {
+const C = Core;
+const SITE = !!(window.RTM_CONFIG && window.RTM_CONFIG.supabaseUrl);
+const S = { legs: [], runners: [], runs: [], cfg: {}, cfgExists: false, loaded: { legs: false, runners: false, runs: false, cfg: false }, pending: false, db: null, offline: false, canEdit: !SITE };
+const SB = { client: null, pin: null, lastOk: 0 };
+let tab = 'live';
+try { tab = localStorage.getItem('rtm.tab') || 'live'; } catch (e) {}
+if (/^#(live|plan|team|log|results)$/.test(location.hash)) tab = location.hash.slice(1);
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const hm = t => { const d = new Date(t); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+const clock = t => t ? DAYS[new Date(t).getDay()] + ' ' + hm(t) : '–';
+const km1 = k => (Math.round(k * 100) / 100).toString();
+const runnerName = id => { const r = S.runners.find(x => x.id === id); return r ? r.name : '—'; };
+const runnerGroup = id => { const r = S.runners.find(x => x.id === id); return r ? r.group : ''; };
+const legOf = n => S.legs.find(l => l.n === n);
+const D = () => ({ legs: S.legs, runners: S.runners, runs: S.runs, cfg: S.cfg });
+const toLocalInput = t => { if (!t) return ''; const d = new Date(t - new Date(t).getTimezoneOffset() * 60000); return d.toISOString().slice(0, 16); };
+const fromLocalInput = s => s ? new Date(s).getTime() : null;
+const twoGroups = () => S.runners.some(r => r.active !== false && r.group === 'B') && S.runners.some(r => r.active !== false && r.group === 'A');
+const gchip = g => !g || (g !== 'S' && !twoGroups()) ? '' : `<span class="g ${esc(g)}">${g === 'S' ? 'Sub' : 'Group ' + esc(g)}</span>`;
+function crewIds(b) {
+  const plan = S.cfg.plan || {}; const ids = [];
+  if (b) for (let n = b.start; n <= b.end; n++) if (plan[n] && !ids.includes(plan[n])) ids.push(plan[n]);
+  return ids;
+}
+
+function toast(msg) {
+  const el = $('#toast'); el.innerHTML = `<div class="toast" role="status">${esc(msg)}</div>`;
+  clearTimeout(toast.t); toast.t = setTimeout(() => { el.innerHTML = ''; }, 2600);
+}
+
+// ---- data layer -----------------------------------------------------------
+const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+function applyLocal(op, col, id, data) {
+  if (col === 'config') { S.cfg = op === 'set' ? { ...data } : { ...S.cfg, ...data }; return; }
+  const arr = S[col]; if (!arr) return;
+  const i = arr.findIndex(x => x.id === id);
+  if (op === 'delete') { if (i >= 0) arr.splice(i, 1); return; }
+  if (op === 'set' || i < 0) { const doc = { id, ...(op === 'update' && i >= 0 ? arr[i] : {}), ...data }; if (i >= 0) arr[i] = doc; else arr.push(doc); return; }
+  arr[i] = { ...arr[i], ...data };
+}
+async function sbWrite(ops) {
+  ops.forEach(o => applyLocal(o.op, o.collection, o.id, o.data));
+  S.pending = true; render();
+  const { error } = await SB.client.rpc('rtm_write', { p_pin: SB.pin || '', p_ops: ops });
+  S.pending = false;
+  if (error) {
+    sbReload(0);
+    const e = new Error(error.message || 'write failed'); e.code = /pin/i.test(error.message || '') ? 'bad_pin' : 'failed'; throw e;
+  }
+  sbReload(400);
+}
+const api = {
+  async add(col, data) {
+    if (SITE) return sbWrite([{ op: 'set', collection: col, id: newId(), data }]);
+    if (S.db) return S.db.collection(col).add(data);
+    S[col].push({ id: 'm' + Math.random().toString(36).slice(2), ...data }); render();
+  },
+  async upd(col, id, data) {
+    if (SITE) return sbWrite([{ op: 'update', collection: col, id, data }]);
+    if (S.db) return S.db.collection(col).doc(id).update(data);
+    Object.assign(S[col].find(x => x.id === id) || {}, data); render();
+  },
+  async put(col, id, data) {
+    if (SITE) return sbWrite([{ op: 'set', collection: col, id, data }]);
+    if (S.db) return S.db.collection(col).doc(id).set(data);
+    const i = S[col].findIndex(x => x.id === id); if (i >= 0) S[col][i] = { id, ...data }; else S[col].push({ id, ...data }); render();
+  },
+  async del(col, id) {
+    if (SITE) return sbWrite([{ op: 'delete', collection: col, id }]);
+    if (S.db) return S.db.collection(col).doc(id).delete();
+    S[col] = S[col].filter(x => x.id !== id); render();
+  },
+  async cfg(patch) {
+    if (SITE) return sbWrite([{ op: 'update', collection: 'config', id: 'race', data: patch }]);
+    const next = { ...S.cfg, ...patch };
+    if (S.db) return S.db.doc('config/race').set(next);
+    S.cfg = next; render();
+  },
+};
+async function save(fn, okMsg) {
+  try { await fn(); if (okMsg) toast(okMsg); }
+  catch (e) {
+    if (e && e.code === 'bad_pin') { lockEditing(); toast('That PIN no longer works. Unlock again with the current PIN.'); return; }
+    toast((e && e.code === 'not_granted') ? 'You can view this page but not change it.' : 'That change did not save. Check your connection and try again.');
+  }
+}
+let reloadTimer = null;
+function sbReload(ms) { clearTimeout(reloadTimer); reloadTimer = setTimeout(sbLoad, ms); }
+async function sbLoad() {
+  try {
+    const { data, error } = await SB.client.from('race_docs').select('collection,id,data').limit(5000);
+    if (error) throw error;
+    const by = { legs: [], runners: [], runs: [] }; let cfg = null;
+    data.forEach(r => { if (r.collection === 'config') { if (r.id === 'race') cfg = r.data || {}; } else if (by[r.collection]) by[r.collection].push({ id: r.id, ...(r.data || {}) }); });
+    if (!S.pending) {
+      S.legs = by.legs.sort((a, b) => a.n - b.n);
+      S.runners = by.runners.sort((a, b) => (a.order || 0) - (b.order || 0));
+      S.runs = by.runs; S.cfg = cfg || {}; S.cfgExists = !!cfg;
+    }
+    Object.keys(S.loaded).forEach(k => S.loaded[k] = true);
+    S.offline = false; SB.lastOk = Date.now();
+  } catch (e) {
+    S.offline = true; Object.keys(S.loaded).forEach(k => S.loaded[k] = true);
+  }
+  render();
+}
+function lockEditing() {
+  SB.pin = null; S.canEdit = false;
+  try { localStorage.removeItem('rtm.pin'); } catch (e) {}
+  closeSheet(); render(true);
+}
+async function tryPin(pin) {
+  const { data, error } = await SB.client.rpc('rtm_check_pin', { p_pin: pin });
+  if (error) throw error;
+  return data === true;
+}
+async function connectSite() {
+  const cfg = window.RTM_CONFIG;
+  if (/YOUR-/.test(cfg.supabaseUrl + cfg.supabaseKey)) { S.setupNeeded = true; S.offline = true; Object.keys(S.loaded).forEach(k => S.loaded[k] = true); render(); return; }
+  if (!window.supabase || !window.supabase.createClient) { S.offline = true; Object.keys(S.loaded).forEach(k => S.loaded[k] = true); render(); return; }
+  SB.client = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey, { auth: { persistSession: false } });
+  await sbLoad();
+  try {
+    SB.client.channel('rtm-docs')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'race_docs' }, () => sbReload(250))
+      .subscribe();
+  } catch (e) {}
+  setInterval(() => sbReload(0), 30000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) sbReload(0); });
+  let saved = null; try { saved = localStorage.getItem('rtm.pin'); } catch (e) {}
+  if (saved) {
+    try { if (await tryPin(saved)) { SB.pin = saved; S.canEdit = true; render(true); } else { try { localStorage.removeItem('rtm.pin'); } catch (e) {} } } catch (e) {}
+  }
+}
+
+async function connect() {
+  if (SITE) return connectSite();
+  let db = null;
+  try { db = window.claude ? await window.claude.use('db') : null; } catch (e) { db = null; }
+  if (!db) { S.offline = true; Object.keys(S.loaded).forEach(k => S.loaded[k] = true); render(); return; }
+  S.db = db;
+  const pend = {};
+  const mark = (k, snap) => { pend[k] = snap.metadata && snap.metadata.hasPendingWrites; S.pending = Object.values(pend).some(Boolean); };
+  const err = () => { toast('Live sync dropped. Reopen the page if it does not recover.'); $('#sync').className = 'sync off'; };
+  db.collection('legs').onSnapshot(s => { S.legs = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.n - b.n); S.loaded.legs = true; mark('legs', s); render(); }, err);
+  db.collection('runners').onSnapshot(s => { S.runners = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order || 0) - (b.order || 0)); S.loaded.runners = true; mark('runners', s); render(); }, err);
+  db.collection('runs').onSnapshot(s => { S.runs = s.docs.map(d => ({ id: d.id, ...d.data() })); S.loaded.runs = true; mark('runs', s); render(); }, err);
+  db.doc('config/race').onSnapshot(s => { S.cfg = s.exists ? (s.data() || {}) : {}; S.cfgExists = s.exists; S.loaded.cfg = true; mark('cfg', s); render(); }, err);
+}
+
+// ---- views ------------------------------------------------------------------
+function header(P) {
+  $('#yr').textContent = S.cfg.year || '';
+  const sync = $('#sync');
+  sync.className = 'sync' + (S.offline ? ' off' : S.pending ? ' pending' : '');
+  sync.title = S.offline ? 'Not syncing' : S.pending ? 'Saving…' : 'Synced';
+  const lb = $('#lockbtn');
+  if (SITE) { lb.hidden = false; lb.className = 'lockbtn' + (S.canEdit ? ' on' : ''); lb.textContent = S.canEdit ? 'Editing · Lock' : 'View only · Unlock'; }
+  const now = Date.now();
+  const first = S.runs.length ? Math.min(...S.runs.map(r => r.start)) : null;
+  const N = S.legs.length;
+  if (!P && N && S.runs.some(r => C.lastLegOf(r) === N && r.legDone)) P = { finished: true, lastEnd: Math.max(...S.runs.filter(r => r.end).map(r => r.end)) };
+  let html;
+  if (P && P.finished) html = `<small>Finished</small>${C.fmtDur((P.lastEnd - first) / 1000)}`;
+  else if (first) html = `<small>Race clock</small><span class="clock" data-since="${first}">${C.fmtDur((now - first) / 1000)}</span>`;
+  else if (S.cfg.start && S.cfg.start > now) html = `<small>Starts in</small>${countdown(S.cfg.start - now)}`;
+  else html = `<small>Race clock</small>Not started`;
+  $('#raceclock').innerHTML = html;
+}
+function countdown(ms) {
+  const h = Math.floor(ms / 3600000), d = Math.floor(h / 24);
+  return d >= 1 ? `${d}d ${h % 24}h` : `${h}h ${Math.floor(ms / 60000) % 60}m`;
+}
+
+function liveView() {
+  if (!S.legs.length) return emptyRoute();
+  const now = Date.now();
+  const P = C.project(D(), now);
+  const N = S.legs.length;
+  const a = P.active;
+  const out = [];
+  const finished = P.st[N] && P.st[N].s === 'done';
+
+  if (finished) {
+    const sm = C.summary(D());
+    out.push(`<section class="sign"><div class="meta"><span class="legno">Finish</span><span>Chalet du Mont Royal</span></div>
+      <h1>Welcome to Montreal</h1><div class="dest">${km1(sm.km)} km run by the team</div>
+      <div class="runrow"><div><div class="lbl">Elapsed</div><div class="runner">${C.fmtDur(sm.elapsed)}</div></div></div></section>
+      <div class="actions"><button class="btn primary" data-act="tab" data-v="results">See results</button><button class="btn" data-act="undo">Undo finish</button></div>`);
+  } else if (a && a.block) {
+    const cur = a.curLeg, L = legOf(cur) || { n: cur, km: 0, name: '' };
+    const pr = P.proj[cur];
+    const who = cur === a.leg && a.runner ? a.runner : (pr && (pr.runner || pr.suggested));
+    const endL = legOf(a.endLeg) || {};
+    const pe = P.proj[a.endLeg];
+    const pct = pr ? Math.min(100, Math.max(0, (now - pr.start) / Math.max(1, pr.end - pr.start) * 100)) : 0;
+    const isLast = a.endLeg === N;
+    out.push(`<section class="sign est" aria-live="polite">
+      <div class="meta"><span class="legno">Leg ${cur} · estimated</span><span>${km1(L.km)} km</span><span>Legs ${a.leg}–${a.endLeg}, no taps</span></div>
+      <h1>${esc(L.name || 'Leg ' + cur)}</h1>
+      <div class="dest">→ ${esc(L.exchange || '')}</div>${legExtras(L)}
+      <div class="runrow"><div><div class="lbl">Probably running</div><div class="runner">${who ? esc(runnerName(who)) : 'Their pick'}</div></div>
+        <div style="text-align:right"><div class="lbl">Block out for</div><div class="clock" data-since="${a.start}">${C.fmtDur((now - a.start) / 1000)}</div></div></div>
+      <div class="bar ${a.overdue ? 'over' : ''}"><i style="width:${pct.toFixed(1)}%"></i></div>
+      <div class="eta"><span>${a.overdue ? '<b>Block due now</b> (past estimate)' : `Leg ${a.endLeg} done <b>~${hm(pe.end)}</b>`}</span><span>${esc(endL.exchange || '')}</span></div>
+    </section>
+    <div class="actions">
+      <button class="btn primary" data-act="checkin">Check in</button>
+      <button class="btn" data-act="handoff">${isLast ? 'Finished' : `Leg ${a.endLeg} done`}</button>
+      <button class="btn" data-act="more">More</button>
+    </div>
+    <div class="hint" style="margin-top:6px">Estimating from paces since ${hm(a.start)}. When you hear where they are, tap Check in to correct it.</div>`);
+  } else if (a) {
+    const L = legOf(a.leg) || { n: a.leg, km: 0, name: '' };
+    const b = C.blockOf(P.blocks, a.leg);
+    const pr = P.proj[a.leg];
+    const pace = C.paceFor(a.runner, D());
+    const rem = Math.max(0, L.km - P.st[a.leg].kmDone);
+    const pct = Math.min(100, ((now - a.start) / Math.max(1, (pr.end - a.start))) * 100);
+    const splitNote = P.st[a.leg].runs.length > 1 ? ` · split, ${km1(rem)} km left on leg` : '';
+    const isFerry = Number(S.cfg.ferryLeg) === a.leg;
+    const isLast = a.leg === N;
+    out.push(`<section class="sign" aria-live="polite">
+      <div class="meta"><span class="legno">Leg ${a.leg}</span><span>${km1(L.km)} km</span>${b ? `<span>Block ${b.i + 1} · ${b.start}–${b.end}</span>` : ''}${isFerry ? '<span>Ferry leg</span>' : ''}${L.carFree ? '<span>No car access</span>' : ''}${noSplit(a.leg) ? '<span>No splits</span>' : ''}</div>
+      <h1>${esc(L.name || 'Leg ' + a.leg)}</h1>
+      <div class="dest">→ ${esc(L.exchange || 'Exchange point')}</div>${legExtras(L)}
+      <div class="runrow"><div><div class="lbl">On course</div><div class="runner">${esc(whoName(a))}</div></div>
+        <div style="text-align:right"><div class="lbl">On leg</div><div class="clock" data-since="${a.start}">${C.fmtDur((now - a.start) / 1000)}</div></div></div>
+      <div class="bar ${pr.overdue ? 'over' : ''}"><i style="width:${pct.toFixed(1)}%"></i></div>
+      <div class="eta"><span>${pr.overdue ? '<b>Due now</b> (past estimate)' : `Arrives <b>~${hm(pr.end)}</b>`}</span><span>est. ${C.fmtPace(pace)}/km${splitNote}</span></div>
+    </section>
+    <div class="actions">
+      <button class="btn primary" data-act="handoff">${isLast ? 'Finish!' : isFerry ? 'At the ferry' : `Handoff → Leg ${a.leg + 1}`}</button>
+      <button class="btn" data-act="split" ${noSplit(a.leg) ? 'disabled title="First and last legs must be run in full by one person"' : ''}>Split leg</button>
+      <button class="btn" data-act="more">More</button>
+    </div>`);
+  } else {
+    const st = P.st;
+    const lastRun = S.runs.reduce((x, r) => (!x || (r.end || 0) > (x.end || 0) ? r : x), null);
+    const next = C.nextLeg(S.runs);
+    const L = legOf(next) || {};
+    const pr = P.proj[next];
+    let why = 'Ready when you are';
+    if (!S.runs.length) why = S.cfg.start ? `Scheduled start ${clock(S.cfg.start)}` : 'Set the start time on the Plan tab';
+    else if (C.lastLegOf(lastRun) === Number(S.cfg.ferryLeg) && lastRun.legDone) why = P.ferry && P.ferry.depart ? `Crossing on the ${hm(P.ferry.depart)} sailing · next leg starts ~${hm(P.ferry.start)}` : `Crossing · next leg starts ~${hm(pr ? pr.start : now)}`;
+    else if (!lastRun.legDone) why = `Paused part-way through Leg ${C.lastLegOf(lastRun)}`;
+    out.push(`<section class="sign"><div class="meta"><span class="legno">Next · Leg ${next}</span><span>${km1(L.km || 0)} km${st[next] && st[next].kmDone ? ` (${km1(Math.max(0, L.km - st[next].kmDone))} left)` : ''}</span></div>
+      <h1>${esc(L.name || '')}</h1><div class="dest">→ ${esc(L.exchange || '')}</div>${legExtras(L)}
+      <div class="eta" style="margin-top:12px"><span>${esc(why)}</span></div></section>
+      <div class="actions"><button class="btn primary" data-act="start" data-v="${next}">${S.runs.length ? 'Start next leg' : 'Start the race'}</button><button class="btn" data-act="startat">Start at…</button>${S.runs.length ? '<button class="btn" data-act="undo">Undo</button>' : '<span></span>'}</div>`);
+  }
+
+  if (!finished) out.push(statusCards(P, now), `<div class="actions" style="grid-template-columns:1fr"><button class="btn" data-act="update">Copy update for the team chat</button></div>`);
+  out.push(`<h2 class="sec">Route</h2>${strip(P)}`);
+  if (!finished) out.push(upNext(P));
+  return { html: out.join(''), P: { finished, lastEnd: finished ? Math.max(...S.runs.filter(r => r.end).map(r => r.end)) : null } };
+}
+
+function statusCards(P, now) {
+  const N = S.legs.length;
+  const cur = P.active ? (P.active.block ? P.active.curLeg : P.active.leg) : (Object.keys(P.proj).map(Number).filter(n => P.proj[n].est).sort((x, y) => x - y)[0] || 1);
+  const b = C.blockOf(P.blocks, cur);
+  const cards = [];
+  if (b) {
+    const end = P.proj[b.end];
+    const L = legOf(b.end) || {};
+    const other = b.group === 'A' ? 'B' : 'A';
+    const nb = P.blocks[b.i + 1];
+    const atFerry = Number(S.cfg.ferryLeg) === b.end;
+    cards.push(`<div class="card"><div class="k">Next swap · end of Leg ${b.end}</div><div class="v">${end ? '~' + hm(end.end) : '–'}</div>
+      <div class="s">${esc(L.exchange || '')}${atFerry ? ' · at the ferry' : ''}</div>
+      <div class="s">${nb ? `Next: Legs ${nb.start}–${nb.end}` : 'Last block'}</div>
+      ${end && !end.actual && nb ? `<div class="s">${esc(blockNames(nb, other))}: ${countdownMin(end.end - now)}</div>` : ''}
+      ${nb ? swapMoves(b, nb) : ''}
+      ${ferryMid(b, P) ? `<div class="s"><b>RV goes to the ferry dock first</b> (~${hm(P.proj[Number(S.cfg.ferryLeg)].end)}), crosses with everyone, then drives to Leg ${b.end}.</div>` : ''}</div>`);
+  }
+  const fl = Number(S.cfg.ferryLeg) || 0;
+  const fp = P.proj[fl];
+  if (fl && fp && !fp.actual) {
+    const f = C.ferryAfter(fp.end, S.cfg);
+    let body, pill = '';
+    if (f.depart) {
+      pill = f.slackMin >= 15 ? `<span class="pill ok">${f.slackMin} min spare</span>` : f.slackMin >= 5 ? `<span class="pill warn">${f.slackMin} min spare</span>` : `<span class="pill bad">${f.slackMin} min spare</span>`;
+      body = `<div class="s">Make the <b>${hm(f.depart)}</b> sailing ${pill}</div>${f.missed ? `<div class="s">Missing the ${hm(f.missed)} by ${Math.round((fp.end + (Number(S.cfg.ferryBoardMin) || 10) * 60000 - f.missed) / 60000)} min</div>` : ''}`;
+    } else body = `<div class="s">${S.canEdit ? 'Add sailing times on the Plan tab to see which ferry you\'ll make.' : 'Sailing times not added yet.'}</div>`;
+    cards.push(`<div class="card"><div class="k">Ferry · end of Leg ${fl}</div><div class="v">~${clock(fp.end)}</div>${body}<div class="s">Both vehicles and the whole team regroup at the dock.</div></div>`);
+  }
+  if (P.finish) cards.push(`<div class="card"><div class="k">Finish · Mont Royal</div><div class="v">~${clock(P.finish)}</div><div class="s">${legsLeft(P)} legs to go</div></div>`);
+  return `<div class="cards">${cards.join('')}</div>`;
+}
+function ferryMid(b, P) { const fl = Number(S.cfg.ferryLeg) || 0; return fl && b && fl >= b.start && fl < b.end && P.proj[fl] && !P.proj[fl].actual; }
+const safeUrl = u => /^https:\/\//.test(String(u || '')) ? u : '';
+function legExtras(L) {
+  if (!L) return '';
+  const links = [];
+  if (safeUrl(L.routeUrl)) links.push(`<a href="${esc(L.routeUrl)}" target="_blank" rel="noopener">Strava route</a>`);
+  if (safeUrl(L.mapUrl)) links.push(`<a href="${esc(L.mapUrl)}" target="_blank" rel="noopener">Exchange on map</a>`);
+  const notes = [];
+  if (L.note) notes.push(`<div><b>Route change:</b> ${esc(L.note)}</div>`);
+  if (L.driverNote) notes.push(`<div><b>Drivers:</b> ${esc(L.driverNote)}</div>`);
+  if (L.teamNote) notes.push(`<div><b>Team note:</b> ${esc(L.teamNote)}</div>`);
+  const nb = `<button class="notebtn" data-act="note" data-v="${L.n}">${L.teamNote ? 'Edit team note' : '+ Add team note'}</button>`;
+  if (!links.length && !notes.length) return nb;
+  return `<div class="extras">${notes.join('')}${links.length ? `<div class="links">${links.join('')}</div>` : ''}${nb}</div>`;
+}
+const legsLeft = P => S.legs.filter(l => P.proj[l.n] && !P.proj[l.n].actual).length;
+function countdownMin(ms) { if (ms <= 0) return 'now'; const m = Math.round(ms / 60000); return m >= 60 ? `be ready in ${Math.floor(m / 60)}h ${m % 60}m` : `be ready in ${m} min`; }
+function swapMoves(b, nb) {
+  const cur = crewIds(b), next = crewIds(nb);
+  if (!cur.length || !next.length) return '';
+  const stay = cur.filter(id => next.includes(id)), toRv = cur.filter(id => !next.includes(id));
+  return `<div class="s">${toRv.length ? `To the RV: ${esc(toRv.map(runnerName).join(', '))}` : ''}${stay.length ? `${toRv.length ? ' · ' : ''}<b>Stays in the follow car: ${esc(stay.map(runnerName).join(', '))}</b>` : ''}</div>`;
+}
+function blockNames(b, fallbackGroup) {
+  const plan = S.cfg.plan || {}; const ids = [];
+  for (let n = b.start; n <= b.end; n++) if (plan[n] && !ids.includes(plan[n])) ids.push(plan[n]);
+  return ids.length ? ids.map(runnerName).join(', ') : groupNames(fallbackGroup || b.group);
+}
+function groupNames(g) { const n = S.runners.filter(r => r.group === g && r.active !== false).map(r => r.name); return n.length ? n.join(', ') : 'Group ' + g; }
+
+function strip(P) {
+  const fl = Number(S.cfg.ferryLeg) || 0;
+  const blocks = P.blocks.map(b => {
+    const cells = [];
+    for (let n = b.start; n <= b.end; n++) {
+      const s = P.st[n] ? P.st[n].s : 'upcoming';
+      const L = legOf(n) || {};
+      cells.push(`<span class="cell ${s}${P.st[n] && P.st[n].est && s === 'done' ? ' partial' : ''}${n === fl ? ' ferry' : ''}" title="Leg ${n} · ${esc(L.name || '')} · ${s}"></span>`);
+    }
+    return `<span class="blk ${twoGroups() ? b.group : (b.i % 2 ? 'B' : 'A')}" title="Block ${b.i + 1}">${cells.join('')}</span>`;
+  });
+  const done = S.legs.filter(l => P.st[l.n].s === 'done').reduce((x, l) => x + l.km, 0);
+  const total = S.legs.reduce((x, l) => x + l.km, 0);
+  return `<div class="strip">${blocks.join('')}</div>
+    <div class="legend"><span><span class="cell done"></span>Done</span><span><span class="cell active"></span>Running</span><span><span class="cell block"></span>Estimated</span><span><span class="cell skipped"></span>Skipped</span><span><span class="cell ferry"></span>Ferry</span><span class="num">${km1(done)} of ${km1(total)} km</span></div>`;
+}
+
+function upNext(P) {
+  const a = P.active;
+  const ns = S.legs.map(l => l.n).filter(n => P.proj[n] && P.proj[n].est && !(a && !a.block && a.leg === n) && !(a && a.block && n <= a.curLeg)).slice(0, 8);
+  if (!ns.length) return '';
+  const fl = Number(S.cfg.ferryLeg) || 0;
+  const rows = [];
+  ns.forEach((n, i) => {
+    const L = legOf(n), pr = P.proj[n], b = C.blockOf(P.blocks, n);
+    if (i > 0 && b && b.start === n) rows.push(`<div class="row swap">Swap · ${esc(blockNames(b))} take over Legs ${b.start}–${b.end}</div>`);
+    if (n === fl + 1 && fl && i > 0) rows.push(`<div class="row swap">Ferry crossing · everyone together</div>`);
+    const who = pr.runner ? esc(runnerName(pr.runner)) : pr.suggested ? `${esc(runnerName(pr.suggested))}?` : 'Pick on the day';
+    rows.push(`<div class="row"><div class="n">${n}</div><div class="t"><b>${esc(L.name)}</b><span>${km1(L.km)} km · ${who} ${gchip(b && b.group)}</span>${L.teamNote ? `<span class="lnote">${esc(L.teamNote)}</span>` : ''}</div><div class="r"><b>${hm(pr.start)}</b><br><span class="hint">${C.fmtPace(pr.pace)}/km</span></div></div>`);
+  });
+  return `<h2 class="sec">Up next · estimated start</h2><div class="list">${rows.join('')}</div>`;
+}
+
+function emptyRoute() {
+  if (S.setupNeeded) return { html: `<div class="empty" style="margin-top:24px"><b>Almost there</b>Open config.js in the GitHub repository and paste in your Supabase project URL and key. See step 3 of the setup guide.</div>` };
+  const msg = !S.loaded.legs ? 'Loading the route…' : S.offline ? (SITE ? 'Could not reach the race data. Check your connection; the page retries every 30 seconds.' : 'Open this page signed in to claude.ai to load the shared route and race data.') : 'No route loaded yet. The 67 official legs will appear here once they are added.';
+  return { html: `<div class="empty" style="margin-top:24px"><b>${S.loaded.legs ? 'Route not loaded' : 'Loading'}</b>${esc(msg)}</div>` };
+}
+
+// ---- plan -------------------------------------------------------------------
+function planView() {
+  if (!S.legs.length) return emptyRoute();
+  const P = C.project(D(), Date.now());
+  const fl = Number(S.cfg.ferryLeg) || 0;
+  const cfg = S.cfg;
+  const fb = C.blockOf(P.blocks, fl);
+  const warn = fl && fb && fb.end !== fl ? `<div class="hint" style="margin-bottom:8px">The ferry after Leg ${fl} falls inside Block ${fb.i + 1}. The RV heads to the dock instead of Leg ${fb.end}, everyone crosses together, then the RV drives on to the end of Leg ${fb.end} while the follow car finishes the block.</div>` : '';
+  const opts = (n, g) => {
+    const cur = (cfg.plan || {})[n] || '';
+    const mine = S.runners.filter(r => r.active !== false && r.group === g);
+    const rest = S.runners.filter(r => r.active !== false && r.group !== g);
+    return `<option value="">Pick on the day</option>${mine.map(r => `<option value="${esc(r.id)}" ${cur === r.id ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}${rest.length ? `<optgroup label="Other runners">${rest.map(r => `<option value="${esc(r.id)}" ${cur === r.id ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</optgroup>` : ''}`;
+  };
+  const blocks = P.blocks.map(b => {
+    const rows = [];
+    for (let n = b.start; n <= b.end; n++) {
+      const L = legOf(n), pr = P.proj[n], s = P.st[n].s;
+      const tag = (L.note || L.driverNote ? ' <span class="pill ok">Updated</span>' : '') + (n === fl ? ' <span class="pill warn">Ferry</span>' : '') + (L.carFree ? ' <span class="pill">No car access</span>' : '') + (noSplit(n) ? ' <span class="pill">No splits</span>' : '');
+      rows.push(`<div class="prow"><div class="n num" style="font-family:var(--display);font-weight:700;color:var(--muted)">${n}</div>
+        <div style="min-width:0"><b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(L.name)}${tag}</b><span class="hint">${km1(L.km)} km · ${s === 'done' ? 'done' : s === 'skipped' ? 'skipped' : pr ? (pr.actual ? 'done' : '~' + clock(pr.start)) : ''}</span><button class="nbtn" data-act="note" data-v="${n}">${L.teamNote ? 'Edit note' : '+ Note'}</button>${L.teamNote ? `<div class="lnote">${esc(L.teamNote)}</div>` : ''}</div>
+        <select id="plan-${n}" data-act="plan" data-v="${n}" aria-label="Runner for leg ${n}">${opts(n, b.group)}</select></div>`);
+    }
+    return `<div class="bhead"><span class="ttl">Block ${b.i + 1} · Legs ${b.start}–${b.end}</span>
+      ${twoGroups() ? `<button class="btn sm" data-act="bgroup" data-v="${b.i}" title="Switch group">${gchip(b.group)}</button>` : `<span class="hint">${esc(crewIds(b).map(runnerName).join(', '))}</span>`}
+      <span class="stepper"><button data-act="blen" data-v="${b.i}" data-d="-1" aria-label="Shorten block">−</button><span>${b.len} legs</span><button data-act="blen" data-v="${b.i}" data-d="1" aria-label="Lengthen block" ${b.len >= 5 ? 'disabled' : ''}>+</button></span></div>${rows.join('')}`;
+  }).join('');
+  return { html: `
+    <h2 class="sec">Race settings</h2>
+    <div class="card" style="display:grid;gap:12px">
+      <div class="grid2">
+        <div class="field"><label for="c-start">Start time</label><input id="c-start" type="datetime-local" data-cfg="start" value="${toLocalInput(cfg.start)}"></div>
+        <div class="field"><label for="c-first">Block 1 group</label><select id="c-first" data-cfg="firstGroup"><option ${cfg.firstGroup !== 'B' ? 'selected' : ''}>A</option><option ${cfg.firstGroup === 'B' ? 'selected' : ''}>B</option></select></div>
+        <div class="field"><label for="c-adj">Pace adjust %</label><input id="c-adj" type="number" step="1" data-cfg="paceAdjPct" value="${esc(cfg.paceAdjPct || 0)}"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label for="c-fl">Ferry after leg</label><input id="c-fl" type="number" min="0" max="${S.legs.length}" data-cfg="ferryLeg" value="${esc(fl)}"></div>
+        <div class="field" style="grid-column:span 2"><label for="c-sail">Ferry sailings (24h, comma-separated)</label><input id="c-sail" type="text" inputmode="numeric" placeholder="e.g. 15:45, 16:15, 16:45" data-cfg="ferrySailings" value="${esc(cfg.ferrySailings || '')}"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label for="c-board">Board by (min before)</label><input id="c-board" type="number" min="0" data-cfg="ferryBoardMin" value="${esc(cfg.ferryBoardMin ?? 10)}"></div>
+        <div class="field"><label for="c-cross">Crossing + unload (min)</label><input id="c-cross" type="number" min="0" data-cfg="ferryCrossMin" value="${esc(cfg.ferryCrossMin ?? 20)}"></div>
+        <div class="field"><label for="c-gap">If no schedule: dock to restart (min)</label><input id="c-gap" type="number" min="0" data-cfg="ferryGapMin" value="${esc(cfg.ferryGapMin ?? 21)}"></div>
+      </div>
+      <div class="hint">Pace adjust nudges every estimate, for example +5 for a cold night or a hilly stretch. Without sailing times, the ferry uses the dock-to-restart gap (21 min in 2025).</div>
+    </div>
+    <h2 class="sec">Blocks & legs</h2>
+    ${warn}
+    <div class="hint" style="margin-bottom:8px">Blocks are 5 legs by default; shorten one with −. Pick runners ahead of time or leave "Pick on the day" and choose at each handoff.</div>
+    <div class="list">${blocks}</div>` };
+}
+
+// ---- team -------------------------------------------------------------------
+function teamView() {
+  const d = D();
+  const rows = S.runners.filter(r => r.active !== false).map(r => {
+    const n = S.runs.filter(x => x.runner === r.id).length;
+    const live = C.paceFor(r.id, d);
+    return `<div class="trow">
+      <input id="rn-${esc(r.id)}" data-runner="${esc(r.id)}" data-f="name" value="${esc(r.name)}" aria-label="Name">
+      <select id="rg-${esc(r.id)}" data-runner="${esc(r.id)}" data-f="group" aria-label="Group"><option value="A" ${r.group === 'A' ? 'selected' : ''}>Group A</option><option value="B" ${r.group === 'B' ? 'selected' : ''}>Group B</option><option value="S" ${r.group === 'S' ? 'selected' : ''}>Sub</option></select>
+      <input id="rp-${esc(r.id)}" data-runner="${esc(r.id)}" data-f="pace" value="${C.fmtPace(r.paceSec)}" inputmode="numeric" aria-label="Pace per km" title="${n ? `Live estimate ${C.fmtPace(live)}/km from ${n} run${n > 1 ? 's' : ''}` : 'Starting pace per km'}">
+      <button class="x" data-act="${n ? 'benchrunner' : 'rmrunner'}" data-v="${esc(r.id)}" aria-label="Remove ${esc(r.name)}" title="${n ? 'Move off this year\'s roster (keeps their logged runs)' : 'Remove'}">×</button></div>`;
+  }).join('');
+  const benched = S.runners.filter(r => r.active === false);
+  const counts = ['A', 'B', 'S'].map(g => `${gchip(g)} ${S.runners.filter(r => r.group === g && r.active !== false).length}`).join(' &nbsp; ');
+  return { html: `
+    <h2 class="sec">Roster</h2>
+    <div class="hint" style="margin-bottom:8px">${counts}. Pace is each runner's starting estimate (min:sec per km). Once they've run, predictions blend in their real splits.</div>
+    <div class="list">${rows || '<div class="empty"><b>No runners yet</b>Add the team below.</div>'}</div>
+    <div class="actions" style="grid-template-columns:1fr 1fr"><button class="btn" data-act="addrunner" data-v="A">Add to Group A</button><button class="btn" data-act="addrunner" data-v="B">Add to Group B</button></div>
+    ${benched.length ? `<h2 class="sec">Not running this year</h2><div class="hint" style="margin-bottom:8px">Kept so past results still show their names. Tap a name to put them back on the roster.</div><div class="chips">${benched.map(r => `<button class="chip" data-act="unbench" data-v="${esc(r.id)}">${esc(r.name)}</button>`).join('')}</div>` : ''}` };
+}
+
+// ---- log --------------------------------------------------------------------
+function logView() {
+  const runs = [...S.runs].sort((a, b) => b.start - a.start);
+  const rows = runs.map(r => {
+    if (C.isBlock(r)) {
+      let km = 0; for (let n = r.leg; n <= r.endLeg; n++) km += (legOf(n) || {}).km || 0;
+      return `<button class="row" data-act="editrun" data-v="${esc(r.id)}"><div class="n">${r.leg}</div>
+        <div class="t"><b>Legs ${r.leg}–${r.endLeg} · estimated ${r.end ? '<span class="pill warn">Needs Strava</span>' : '<span class="pill warn">Running</span>'}</b><span>${clock(r.start)}${r.end ? '–' + hm(r.end) : ''} · no taps${r.end ? ' · tap to add each runner' : ''}</span></div>
+        <div class="r"><b>${km1(km)} km</b> <b class="pace">${r.end && km ? C.fmtPace((r.end - r.start) / 1000 / km) + '/km' : ''}</b><br><span class="hint">${r.end ? C.fmtDur((r.end - r.start) / 1000) + ' · block avg' : ''}</span></div></button>`;
+    }
+    const L = legOf(r.leg) || {};
+    const sec = C.runSec(r), k = C.runKm(r);
+    const strava = r.actualKm || r.movingSec ? ' · <span class="pill ok">Strava</span>' : '';
+    const status = !r.end ? '<span class="pill warn">Running</span>' : r.legDone ? '' : '<span class="pill">Split</span>';
+    return `<button class="row" data-act="editrun" data-v="${esc(r.id)}"><div class="n">${r.leg}</div>
+      <div class="t"><b>${esc(whoName(r))} ${status}</b><span>${esc(L.name || '')} · ${clock(r.start)}${r.end ? '–' + hm(r.end) : ''}${strava}</span></div>
+      <div class="r"><b>${k ? km1(k) + ' km' : '–'}</b> <b class="pace">${r.end && k ? C.fmtPace(sec / k) + '/km' : ''}</b><br><span class="hint">${r.end ? C.fmtDur(sec) : ''}</span></div></button>`;
+  }).join('');
+  return { html: `
+    <h2 class="sec">Every leg run</h2>
+    <div class="hint" style="margin-bottom:8px">Tap a run to fix its times, runner or distance, or to add Strava distance and moving time. Strava numbers replace the tap timings in Results.</div>
+    <div class="list">${rows || '<div class="empty"><b>No runs yet</b>Runs appear here as you tap Start, Split and Handoff.</div>'}</div>
+    <div class="actions" style="grid-template-columns:1fr"><button class="btn" data-act="addrun">Add a run by hand</button></div>
+    ${S.runs.length ? `<h2 class="sec">Practice & reset</h2><div class="card"><div class="hint">Tried the tracker out before race day? Clear every logged run. The roster, route and plan stay.</div><div class="actions" style="grid-template-columns:1fr"><button class="btn danger" data-act="reset">Clear all runs</button></div></div>` : ''}` };
+}
+
+// ---- results ----------------------------------------------------------------
+const HISTORY = [
+  { y: '2024', sec: 20 * 3600 + 24 * 60, km: 255.92 },
+  { y: '2025', sec: 19 * 3600 + 36 * 60 + 10, km: 257.33 },
+];
+function resultsView() {
+  const sm = C.summary(D());
+  if (!sm.rows.length && !sm.estBlocks) return { html: `<div class="empty" style="margin-top:24px"><b>No results yet</b>Team and runner stats fill in as legs are completed.</div>` };
+  const tiles = [
+    ['Distance run', km1(sm.km) + ' km'], ['Running time', C.fmtDur(sm.sec)], ['Elapsed', C.fmtDur(sm.elapsed)],
+    ['Avg pace', C.fmtPace(sm.pace) + '/km'], ['Legs complete', `${sm.legsDone} / ${S.legs.length}`],
+  ];
+  if (sm.skippedKm) tiles.push(['Skipped', km1(sm.skippedKm) + ' km']);
+  if (sm.estBlocks) tiles.push(['Awaiting Strava', km1(sm.estKm) + ' km']);
+  const ferry = HISTORY.concat(sm.toFerry ? [{ y: String(S.cfg.year || 'This year'), sec: sm.toFerry.sec, km: sm.toFerry.km, cur: true }] : []);
+  const fl = Number(S.cfg.ferryLeg) || 26;
+  const rows = sm.rows.map(r => `<tr><td>${esc(r.name)} ${gchip(r.group)}</td><td>${r.runs}</td><td>${km1(r.km)}</td><td>${C.fmtDur(r.sec)}</td><td>${C.fmtPace(r.pace)}</td><td>${r.best ? `${C.fmtPace(r.best.pace)} · L${r.best.leg}` : '–'}</td></tr>`).join('');
+  const groups = (twoGroups() ? ['A', 'B', 'S'] : ['S']).map(g => {
+    const rs = sm.rows.filter(r => r.group === g); if (!rs.length) return '';
+    const k = rs.reduce((x, r) => x + r.km, 0), s = rs.reduce((x, r) => x + r.sec, 0);
+    return `<tr class="hl"><td>${g === 'S' ? 'Subs' : 'Group ' + g}</td><td>${rs.reduce((x, r) => x + r.runs, 0)}</td><td>${km1(k)}</td><td>${C.fmtDur(s)}</td><td>${C.fmtPace(s / k)}</td><td></td></tr>`;
+  }).join('');
+  return { html: `
+    <h2 class="sec">Team</h2><div class="tiles">${tiles.map(([k, v]) => `<div class="tile"><span>${k}</span><b>${v}</b></div>`).join('')}</div>
+    <h2 class="sec">Start to ferry (end of Leg ${fl})</h2>
+    <div class="tbl"><table><thead><tr><th>Year</th><th>Time</th><th>Km</th><th>Pace</th></tr></thead><tbody>
+      ${ferry.map(f => `<tr class="${f.cur ? 'hl' : ''}"><td>${esc(f.y)}</td><td>${C.fmtDur(f.sec)}</td><td>${km1(f.km)}</td><td>${C.fmtPace(f.sec / f.km)}</td></tr>`).join('')}
+    </tbody></table></div>
+    ${sm.toFerry ? '' : '<div class="hint" style="margin-top:6px">This year\'s row appears once the ferry leg is done.</div>'}
+    <h2 class="sec">Runners</h2>
+    <div class="tbl"><table><thead><tr><th>Runner</th><th>Runs</th><th>Km</th><th>Time</th><th>Pace</th><th>Best</th></tr></thead><tbody>${rows}${groups}</tbody></table></div>
+    <div class="actions" style="grid-template-columns:1fr 1fr"><button class="btn" data-act="csv">Copy run log (CSV)</button><button class="btn" data-act="csvsave">Save CSV</button></div>
+    <div class="hint" style="margin-top:6px">The CSV has one row per run, like your past spreadsheets, so it pastes straight into Excel.</div>` };
+}
+
+function csv() {
+  const head = ['Official leg', 'Leg name', 'Official km', 'Runner', 'Second runner', 'Group', 'Start', 'End', 'Km (tap)', 'Strava km', 'Strava moving time', 'Time used', 'Km used', 'Pace (min/km)', 'Leg finished', 'Note'];
+  const rows = [...S.runs].sort((a, b) => a.start - b.start).map(r => {
+    const iso = t => t ? new Date(t - new Date(t).getTimezoneOffset() * 60000).toISOString().slice(0, 19).replace('T', ' ') : '';
+    if (C.isBlock(r)) return [`${r.leg}-${r.endLeg}`, 'Estimated block', '', '(no taps)', '', '', iso(r.start), iso(r.end), '', '', '', r.end ? C.fmtDur((r.end - r.start) / 1000) : '', '', '', r.legDone ? 'yes' : 'no', 'Add Strava data in the Log tab'];
+    const L = legOf(r.leg) || {}; const s = C.runSec(r), k = C.runKm(r);
+    return [r.leg, L.name, L.km, runnerName(r.runner), r.partner ? runnerName(r.partner) : '', runnerGroup(r.runner), iso(r.start), iso(r.end), r.km ?? '', r.actualKm ?? '', r.movingSec ? C.fmtDur(r.movingSec) : '', r.end ? C.fmtDur(s) : '', k || '', k && s ? C.fmtPace(s / k) : '', r.legDone ? 'yes' : 'no', r.note || ''];
+  });
+  return [head].concat(rows).map(row => row.map(v => { const t = String(v ?? ''); return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; }).join(',')).join('\n');
+}
+
+// ---- sheets -----------------------------------------------------------------
+let sheetState = null;
+function openSheet(st) { sheetState = st; drawSheet(); }
+function closeSheet() { sheetState = null; $('#sheet').innerHTML = ''; }
+const noSplit = n => S.legs.length && (n === S.legs[0].n || n === S.legs[S.legs.length - 1].n);
+const whoName = r => runnerName(r.runner) + (r.partner ? ' + ' + runnerName(r.partner) : '');
+function pairBox(st, group, legN) {
+  const L = legOf(legN) || {};
+  return `<label class="check"><input type="checkbox" id="s-pair" data-sf="pair" ${st.pair ? 'checked' : ''}> Two runners together with a bike${L.carFree ? ' (no car access on this leg)' : ' (car-free stretch)'}</label>
+    ${st.pair ? `<div class="field"><label>Second runner</label>${runnerChips(st.partner, group, null, 'pickp', st.runner)}</div>` : ''}`;
+}
+let chipCrew = [];
+function runnerChips(selected, group, exclude, act, hide) {
+  const crew = chipCrew;
+  const rank = r => crew.length ? (crew.includes(r.id) ? 0 : 1) : (r.group === group ? 0 : 1);
+  const order = [...S.runners].filter(r => r.active !== false && r.id !== hide).sort((a, b) => rank(a) - rank(b));
+  return `<div class="chips" role="group" aria-label="Runner">${order.map(r => `<button class="chip" data-act="${act || 'pick'}" data-v="${esc(r.id)}" aria-pressed="${selected === r.id}">${esc(r.name)}${r.group === 'S' ? '<small>sub</small>' : (twoGroups() && !crew.length && r.group !== group ? `<small>${r.group}</small>` : '')}${r.id === exclude ? '<small>just ran</small>' : ''}</button>`).join('')}</div>`;
+}
+const AGO = [0, 1, 2, 3, 5, 10, 15, 30, 45, 60];
+function estimateBox(st, nb) {
+  return `<label class="check"><input type="checkbox" id="s-est" data-sf="estimate" ${st.estimate ? 'checked' : ''}> I won't be with this group: estimate the rest of Block ${nb.i + 1} (to Leg ${nb.end}) without taps</label>`;
+}
+function agoSelect(v) { return `<div class="field"><label for="s-ago">When</label><select id="s-ago" data-sf="ago">${AGO.map(m => `<option value="${m}" ${Number(v) === m ? 'selected' : ''}>${m ? m + ' min ago' : 'Now'}</option>`).join('')}</select></div>`; }
+
+function drawSheet() {
+  const st = sheetState; if (!st) return;
+  const P = C.project(D(), Date.now());
+  const blocks = P.blocks;
+  {
+    const a0 = P.active; const L0 = st.kind === 'start' || st.kind === 'checkin' ? st.leg : a0 ? (st.kind === 'split' ? a0.leg : (a0.block ? a0.endLeg : a0.leg) + 1) : null;
+    chipCrew = crewIds(C.blockOf(blocks, L0));
+  }
+  let body = '';
+  if (st.kind === 'handoff' || st.kind === 'split') {
+    const a = P.active; if (!a) return closeSheet();
+    const aLeg = a.block ? a.endLeg : a.leg;
+    const isLast = aLeg === S.legs.length; const isFerry = Number(S.cfg.ferryLeg) === aLeg;
+    const nextLeg = st.kind === 'split' ? a.leg : aLeg + 1;
+    const nb = C.blockOf(blocks, nextLeg);
+    const needsNext = st.kind === 'split' || (!isLast && !isFerry);
+    body = `<h3>${st.kind === 'split' ? `Split Leg ${a.leg}` : isLast ? 'Finish line' : isFerry ? `Leg ${aLeg} done · ferry` : a.block ? `Legs ${a.leg}–${aLeg} done → Leg ${nextLeg}` : `Handoff → Leg ${nextLeg}`}</h3>
+      ${a.block ? `<div class="hint">Ends the estimated block. Add each runner's Strava numbers later from the Log tab.</div>` : `<div class="field"><label for="s-km">${esc(whoName(a))} ran (km)</label><input id="s-km" type="number" step="0.01" inputmode="decimal" data-sf="km" value="${esc(st.km)}"></div>`}
+      ${needsNext ? `<div class="field"><label>${st.kind === 'split' ? 'Who takes over' : `Leg ${nextLeg} runner`} ${nb ? gchip(nb.group) : ''}</label>${runnerChips(st.runner, nb ? nb.group : 'A', a.runner)}</div>${st.estimate ? '' : pairBox(st, nb ? nb.group : 'A', nextLeg)}` : isFerry ? `<div class="hint">The next leg starts after the crossing. Tap "Start next leg" when the runner sets off on the other side.</div>` : ''}
+      ${needsNext && st.kind === 'handoff' && nb ? estimateBox(st, nb) : ''}
+      ${agoSelect(st.ago)}
+      <div class="acts"><button class="btn quiet" data-act="close">Cancel</button><button class="btn primary" data-act="confirm" ${needsNext && !st.runner ? 'disabled' : ''}>${st.kind === 'split' ? 'Split' : isLast ? 'Finish' : isFerry ? 'Arrived at ferry' : 'Hand off'}</button></div>`;
+  } else if (st.kind === 'start') {
+    const nb = C.blockOf(blocks, st.leg);
+    const legOpts = S.legs.map(l => `<option value="${l.n}" ${l.n === st.leg ? 'selected' : ''}>Leg ${l.n} · ${esc(l.name)}</option>`).join('');
+    body = `<h3>Start a leg</h3>
+      <div class="field"><label for="s-leg">Leg</label><select id="s-leg" data-sf="leg">${legOpts}</select></div>
+      <div class="field"><label>Runner ${nb ? gchip(nb.group) : ''}</label>${runnerChips(st.runner, nb ? nb.group : 'A')}</div>
+      ${st.estimate ? '' : pairBox(st, nb ? nb.group : 'A', st.leg)}
+      ${nb ? estimateBox(st, nb) : ''}
+      ${agoSelect(st.ago)}
+      <div class="acts"><button class="btn quiet" data-act="close">Cancel</button><button class="btn primary" data-act="confirm" ${st.runner ? '' : 'disabled'}>Start Leg ${st.leg}</button></div>`;
+  } else if (st.kind === 'more') {
+    const blk = P.active && P.active.block;
+    body = `<h3>More</h3>
+      ${blk ? '' : `<button class="btn" data-act="pause">Pause the race</button>
+      <div class="hint">Pausing stops the clock on the current runner, for example for a storm hold. Restart from any leg with "Start at…".</div>`}
+      <button class="btn" data-act="update">Copy update for the team chat</button>
+      <button class="btn" data-act="undo">Undo last tap</button>
+      <div class="acts"><button class="btn quiet" data-act="close">Close</button></div>`;
+  } else if (st.kind === 'checkin') {
+    const a = P.active; if (!a || !a.block) return closeSheet();
+    const nb = C.blockOf(blocks, st.leg);
+    const legOpts = []; for (let n = a.leg; n <= a.endLeg; n++) legOpts.push(`<option value="${n}" ${n === st.leg ? 'selected' : ''}>Leg ${n} · ${esc((legOf(n) || {}).name || '')}</option>`);
+    body = `<h3>Check in</h3><div class="hint">Heard from the follow car? Tell the tracker who is running now so the estimates catch up.</div>
+      <div class="field"><label for="c-leg">They're on</label><select id="c-leg" data-sf="leg">${legOpts.join('')}</select></div>
+      <div class="field"><label>Runner on that leg ${nb ? gchip(nb.group) : ''}</label>${runnerChips(st.runner, nb ? nb.group : 'A')}</div>
+      <div class="field"><label for="s-ago">Started that leg</label><select id="s-ago" data-sf="ago">${AGO.map(m => `<option value="${m}" ${Number(st.ago) === m ? 'selected' : ''}>${m ? m + ' min ago' : 'Just now'}</option>`).join('')}</select></div>
+      <label class="check"><input type="checkbox" id="c-live" data-sf="live" ${st.live ? 'checked' : ''}> I'm with them now, track live with taps from here</label>
+      <div class="acts"><button class="btn quiet" data-act="close">Cancel</button><button class="btn primary" data-act="confirm" ${st.runner ? '' : 'disabled'}>Update</button></div>`;
+  } else if (st.kind === 'fill') {
+    const r = st.run;
+    const rows = st.rows.map((x, i) => `<div class="frow"><div class="n">${x.leg}</div>
+      <select id="f-r-${i}" data-fill="${i}" data-f="runner" aria-label="Runner for leg ${x.leg}"><option value="">Runner…</option>${S.runners.map(u => `<option value="${esc(u.id)}" ${u.id === x.runner ? 'selected' : ''}>${esc(u.name)}</option>`).join('')}</select>
+      <input id="f-k-${i}" data-fill="${i}" data-f="km" type="number" step="0.01" inputmode="decimal" value="${esc(x.km)}" aria-label="Strava km">
+      <input id="f-m-${i}" data-fill="${i}" data-f="moving" placeholder="h:mm:ss" value="${esc(x.moving)}" aria-label="Strava moving time">
+      ${x.extra ? `<button class="x" data-act="fillrm" data-v="${i}" aria-label="Remove split">×</button>` : noSplit(x.leg) ? '<span></span>' : `<button class="x" data-act="filladd" data-v="${i}" aria-label="Split leg ${x.leg}" title="Add a split runner">+</button>`}</div>`).join('');
+    body = `<h3>Strava for Legs ${r.leg}–${r.endLeg}</h3>
+      <div class="hint">Enter each runner's Strava distance and moving time. Tap + to split a leg between runners. Start and end times are spread across the block's real ${C.fmtDur((r.end - r.start) / 1000)}${st.ferry ? ', minus the ferry crossing' : ''}. Blank times are estimated from pace.</div>
+      <div class="frow head"><span>Leg</span><span>Runner</span><span>Km</span><span>Moving</span><span></span></div>${rows}
+      <div class="acts"><button class="btn quiet" data-act="close">Cancel</button><button class="btn primary" data-act="confirm" ${st.rows.every(x => x.runner) ? '' : 'disabled'}>Save ${st.rows.length} runs</button></div>`;
+  } else if (st.kind === 'pause') {
+    const a = P.active; if (!a) return closeSheet();
+    body = `<h3>Pause on Leg ${a.leg}</h3>
+      <div class="field"><label for="s-km">${esc(runnerName(a.runner))} ran (km)</label><input id="s-km" type="number" step="0.01" inputmode="decimal" data-sf="km" value="${esc(st.km)}"></div>
+      <label class="check"><input type="checkbox" id="s-done" data-sf="legDone" ${st.legDone ? 'checked' : ''}> Count Leg ${a.leg} as finished</label>
+      ${agoSelect(st.ago)}
+      <div class="acts"><button class="btn quiet" data-act="close">Cancel</button><button class="btn primary" data-act="confirm">Pause</button></div>`;
+  } else if (st.kind === 'edit') {
+    const r = st.run;
+    body = `<h3>${r.id ? 'Edit run' : 'Add a run'}</h3>
+      <div class="grid2">
+        <div class="field"><label for="e-leg">Official leg</label><input id="e-leg" type="number" min="1" max="${S.legs.length}" data-sf="leg" value="${esc(r.leg)}"></div>
+        <div class="field"><label for="e-runner">Runner</label><select id="e-runner" data-sf="runner">${S.runners.map(x => `<option value="${esc(x.id)}" ${x.id === r.runner ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></div>
+        <div class="field"><label for="e-partner">Second runner</label><select id="e-partner" data-sf="partner"><option value="">None</option>${S.runners.map(x => `<option value="${esc(x.id)}" ${x.id === r.partner ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label for="e-start">Start</label><input id="e-start" type="datetime-local" data-sf="startS" value="${esc(r.startS)}"></div>
+        <div class="field"><label for="e-end">End</label><input id="e-end" type="datetime-local" data-sf="endS" value="${esc(r.endS)}"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label for="e-km">Km (planned share)</label><input id="e-km" type="number" step="0.01" data-sf="km" value="${esc(r.km ?? '')}"></div>
+        <div class="field"><label for="e-akm">Strava km</label><input id="e-akm" type="number" step="0.01" data-sf="actualKm" value="${esc(r.actualKm ?? '')}"></div>
+        <div class="field"><label for="e-mt">Strava moving time</label><input id="e-mt" placeholder="h:mm:ss" data-sf="moving" value="${esc(r.moving || '')}"></div>
+      </div>
+      <label class="check"><input type="checkbox" id="e-done" data-sf="legDone" ${r.legDone ? 'checked' : ''}> This run finished the official leg</label>
+      <div class="field"><label for="e-note">Note</label><input id="e-note" data-sf="note" value="${esc(r.note || '')}" placeholder="e.g. GPS wonky, wrong turn"></div>
+      <div class="acts">${r.id ? (st.confirmDel ? `<button class="btn danger" data-act="delrun">Delete for good</button>` : `<button class="btn quiet" data-act="askdel">Delete</button>`) : ''}<span style="flex:1"></span><button class="btn quiet" data-act="close">Cancel</button><button class="btn primary" data-act="confirm">Save</button></div>`;
+  } else if (st.kind === 'note') {
+    const L = legOf(st.leg) || {};
+    body = `<h3>Team note · Leg ${st.leg}</h3>
+      <div class="hint">${esc(L.name || '')}. Everyone viewing the tracker sees this note on the leg.</div>
+      <textarea class="note" id="n-text" data-sf="text" placeholder="e.g. Bring a headlamp. Watch the turn at Port Union Rd. Bike pacer needed.">${esc(st.text)}</textarea>
+      <div class="acts">${L.teamNote ? '<button class="btn quiet" data-act="noteclear">Delete note</button>' : ''}<span style="flex:1"></span><button class="btn quiet" data-act="close">Cancel</button><button class="btn primary" data-act="confirm">Save note</button></div>`;
+  } else if (st.kind === 'pin') {
+    body = `<h3>${S.canEdit ? 'Editing is unlocked' : 'Unlock editing'}</h3>
+      ${S.canEdit ? `<div class="hint">This device can tap handoffs and make changes. Lock it to go back to view only.</div>
+      <div class="acts"><button class="btn quiet" data-act="close">Close</button><button class="btn primary" data-act="relock">Lock this device</button></div>` : `
+      <div class="hint">Anyone can follow the race. Enter the team PIN to tap handoffs and make changes on this device.</div>
+      <div class="field"><label for="pin-in">PIN</label><input id="pin-in" type="password" autocomplete="off" data-sf="pin" value="${esc(st.pin || '')}"></div>
+      ${st.err ? `<div class="hint" style="color:var(--bad)">${esc(st.err)}</div>` : ''}
+      <div class="acts"><button class="btn quiet" data-act="close">Cancel</button><button class="btn primary" data-act="confirm" ${st.busy ? 'disabled' : ''}>${st.busy ? 'Checking…' : 'Unlock'}</button></div>`}`;
+  } else if (st.kind === 'reset') {
+    body = `<h3>Clear all ${S.runs.length} runs?</h3><div class="hint">This deletes every logged run for everyone. The roster, route and plan stay.</div>
+      <div class="acts"><button class="btn quiet" data-act="close">Cancel</button><button class="btn danger" data-act="confirm">Clear runs</button></div>`;
+  }
+  $('#sheet').innerHTML = `<div class="scrim" data-act="scrim"><div class="sheet" role="dialog" aria-modal="true">${body}</div></div>`;
+}
+
+function newRun(leg, runner, start, estimateTo, prevId, partner) {
+  const base = { leg, runner, start, end: null, km: null, legDone: false, prevId: prevId || null };
+  if (partner && partner !== runner && !estimateTo) base.partner = partner;
+  return estimateTo && estimateTo >= leg ? { ...base, kind: 'block', endLeg: estimateTo } : base;
+}
+function parseHMS(s) {
+  const p = String(s || '').trim().split(':').map(Number);
+  if (!p.length || p.some(isNaN)) return null;
+  return p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p.length === 2 ? p[0] * 60 + p[1] : null;
+}
+
+async function confirmSheet() {
+  const st = sheetState; if (!st) return;
+  const P = C.project(D(), Date.now());
+  const at = Date.now() - (Number(st.ago) || 0) * 60000;
+  const a = P.active;
+  if (st.kind === 'handoff' || st.kind === 'split') {
+    if (!a) return closeSheet();
+    const aLeg = a.block ? a.endLeg : a.leg;
+    const isLast = aLeg === S.legs.length, isFerry = Number(S.cfg.ferryLeg) === aLeg;
+    const end = Math.max(at, a.start + 1000);
+    const km = Number(st.km) || 0;
+    const nb = C.blockOf(P.blocks, aLeg + 1);
+    closeSheet();
+    await save(async () => {
+      await api.upd('runs', a.id, a.block ? { end, legDone: true } : { end, km, legDone: st.kind === 'handoff' });
+      const partner = st.pair ? st.partner : null;
+      if (st.kind === 'split') await api.add('runs', newRun(a.leg, st.runner, end, null, a.id, partner));
+      else if (!isLast && !isFerry) await api.add('runs', newRun(aLeg + 1, st.runner, end, st.estimate && nb ? nb.end : null, a.id, partner));
+    }, st.kind === 'split' ? `${runnerName(st.runner)} takes over` : isLast ? 'Finished!' : isFerry ? 'At the ferry' : `${runnerName(st.runner)} is off on Leg ${aLeg + 1}${st.estimate ? ' · estimating the block' : ''}`);
+  } else if (st.kind === 'checkin') {
+    if (!a || !a.block) return closeSheet();
+    const L = Number(st.leg);
+    const t0 = Math.max(at, a.start + 1000);
+    closeSheet();
+    await save(async () => {
+      if (L === a.leg) await api.upd('runs', a.id, st.live ? { kind: null, endLeg: null, runner: st.runner } : { runner: st.runner });
+      else {
+        await api.upd('runs', a.id, { endLeg: L - 1, end: t0, legDone: true });
+        await api.add('runs', newRun(L, st.runner, t0, st.live ? null : a.endLeg, a.id));
+      }
+    }, `Updated: ${runnerName(st.runner)} on Leg ${L}`);
+  } else if (st.kind === 'fill') {
+    const r = st.run;
+    const legKm = n => (legOf(n) || {}).km || 0;
+    const secs = st.rows.map(x => parseHMS(x.moving) || (Number(x.km) || legKm(x.leg)) * C.paceFor(x.runner, D()));
+    const total = secs.reduce((p, q) => p + q, 0) * 1000;
+    const gap = st.ferry ? (Number(S.cfg.ferryGapMin) || 21) * 60000 : 0;
+    const k = total > 0 ? Math.max(0.2, (r.end - r.start - gap) / total) : 1;
+    const fl = Number(S.cfg.ferryLeg) || 0;
+    let t = r.start;
+    const out = st.rows.map((x, i) => {
+      const dur = secs[i] * 1000 * k;
+      const lastOfLeg = !st.rows.slice(i + 1).some(y => y.leg === x.leg);
+      const mv = parseHMS(x.moving);
+      const run = { leg: x.leg, runner: x.runner, start: Math.round(t), end: Math.round(t + dur), km: Number(x.km) || null, actualKm: mv && x.km ? Number(x.km) : null, movingSec: mv || null, legDone: lastOfLeg, note: 'From Strava, times spread across the block' };
+      t += dur;
+      if (lastOfLeg && x.leg === fl && st.ferry) t += gap;
+      return run;
+    });
+    closeSheet();
+    await save(async () => { for (const x of out) await api.add('runs', x); await api.del('runs', r.id); }, `Saved ${out.length} runs`);
+  } else if (st.kind === 'start') {
+    if (a) return closeSheet();
+    const last = S.runs.reduce((x, r) => (!x || (r.end || 0) > (x.end || 0) ? r : x), null);
+    closeSheet();
+    const nb = C.blockOf(P.blocks, st.leg);
+    await save(() => api.add('runs', newRun(st.leg, st.runner, at, st.estimate && nb ? nb.end : null, last ? last.id : null, st.pair ? st.partner : null)), `${runnerName(st.runner)} is off on Leg ${st.leg}`);
+  } else if (st.kind === 'pause') {
+    if (!a) return closeSheet();
+    closeSheet();
+    await save(() => api.upd('runs', a.id, { end: Math.max(at, a.start + 1000), km: Number(st.km) || 0, legDone: !!st.legDone }), 'Race paused');
+  } else if (st.kind === 'edit') {
+    const r = st.run;
+    const data = {
+      leg: Math.max(1, Math.min(S.legs.length, parseInt(r.leg, 10) || 1)), runner: r.runner, partner: r.partner && r.partner !== r.runner ? r.partner : null,
+      start: fromLocalInput(r.startS), end: fromLocalInput(r.endS),
+      km: r.km === '' || r.km == null ? null : Number(r.km), actualKm: r.actualKm === '' || r.actualKm == null ? null : Number(r.actualKm),
+      movingSec: parseHMS(r.moving), legDone: !!r.legDone, note: r.note || '',
+    };
+    if (!data.start) return toast('Add a start time.');
+    if (data.end && data.end <= data.start) return toast('End has to be after start.');
+    if (!data.end && S.runs.some(x => !x.end && x.id !== r.id)) return toast('Another runner is already on course. Give this run an end time.');
+    closeSheet();
+    await save(() => r.id ? api.upd('runs', r.id, data) : api.add('runs', data), 'Saved');
+  } else if (st.kind === 'note') {
+    const L = legOf(st.leg); if (!L) return closeSheet();
+    const text = String(st.text || '').trim().slice(0, 1000);
+    closeSheet();
+    await save(() => api.upd('legs', L.id, { teamNote: text }), text ? 'Note saved' : 'Note deleted');
+  } else if (st.kind === 'pin') {
+    const pin = String(st.pin || '').trim();
+    if (!pin) { st.err = 'Enter the PIN.'; return drawSheet(); }
+    st.busy = true; st.err = ''; drawSheet();
+    let ok = false;
+    try { ok = await tryPin(pin); } catch (e) { st.busy = false; st.err = 'Could not check the PIN. Check your connection and try again.'; return drawSheet(); }
+    if (!ok) { st.busy = false; st.err = 'That PIN is not right.'; st.pin = ''; return drawSheet(); }
+    SB.pin = pin; S.canEdit = true;
+    try { localStorage.setItem('rtm.pin', pin); } catch (e) {}
+    closeSheet(); render(true); toast('Editing unlocked on this device');
+  } else if (st.kind === 'reset') {
+    closeSheet();
+    await save(async () => { for (const r of [...S.runs]) await api.del('runs', r.id); }, 'All runs cleared');
+  }
+}
+
+async function undo() {
+  closeSheet();
+  if (!S.runs.length) return;
+  const latest = S.runs.reduce((x, r) => (!x || r.start > x.start ? r : x), null);
+  const lastEnded = S.runs.filter(r => r.end).reduce((x, r) => (!x || r.end > x.end ? r : x), null);
+  await save(async () => {
+    if (latest.end && (!lastEnded || lastEnded.id === latest.id)) {
+      await api.upd('runs', latest.id, { end: null, km: null, legDone: false });
+    } else if (lastEnded && lastEnded.end > latest.start) {
+      await api.upd('runs', lastEnded.id, { end: null, km: null, legDone: false });
+    } else {
+      await api.del('runs', latest.id);
+      const prev = S.runs.find(r => r.id === latest.prevId) || lastEnded;
+      if (prev && prev.end && Math.abs(prev.end - latest.start) < 2000) await api.upd('runs', prev.id, { end: null, km: null, legDone: false });
+    }
+  }, 'Undone');
+}
+
+async function copyText(t, okMsg) {
+  try { await navigator.clipboard.writeText(t); toast(okMsg); }
+  catch (err) {
+    sheetState = { kind: 'copy' };
+    $('#sheet').innerHTML = `<div class="scrim" data-act="scrim"><div class="sheet" role="dialog" aria-modal="true"><h3>Copy this</h3><textarea style="width:100%;height:40vh;font:13px/1.4 ui-monospace,monospace;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--surface-2);color:var(--ink)" readonly>${esc(t)}</textarea><div class="acts"><button class="btn quiet" data-act="close">Close</button></div></div></div>`;
+    const ta = $('#sheet textarea'); ta.focus(); ta.select();
+  }
+}
+function teamUpdate() {
+  const now = Date.now(); const P = C.project(D(), now); const a = P.active; const N = S.legs.length;
+  const lines = [`RunToMTL update · ${hm(now)}`];
+  if (P.st[N] && P.st[N].s === 'done') { lines.push('We are finished! See you on Mont Royal.'); return lines.join('\n'); }
+  if (a && a.block) {
+    const pr = P.proj[a.curLeg], who = a.curLeg === a.leg && a.runner ? a.runner : (pr.runner || pr.suggested);
+    lines.push(`Now (estimated): Leg ${a.curLeg} ${(legOf(a.curLeg) || {}).name || ''}${who ? ' · ' + runnerName(who) : ''} · done ~${hm(pr.end)}`);
+  } else if (a) lines.push(`Now: Leg ${a.leg} ${(legOf(a.leg) || {}).name || ''} · ${runnerName(a.runner)} · arrives ~${hm(P.proj[a.leg].end)}`);
+  else { const n = C.nextLeg(S.runs); if (P.proj[n]) lines.push(`Next: Leg ${n} ${(legOf(n) || {}).name || ''} · starts ~${hm(P.proj[n].start)}`); }
+  { const cl = legOf(a ? (a.block ? a.curLeg : a.leg) : C.nextLeg(S.runs)); if (cl && cl.teamNote) lines.push(`Note for Leg ${cl.n}: ${cl.teamNote}`); }
+  const cur = a ? (a.block ? a.curLeg : a.leg) : C.nextLeg(S.runs);
+  const b = C.blockOf(P.blocks, cur);
+  if (b && P.proj[b.end]) {
+    const nb = P.blocks[b.i + 1];
+    lines.push(`Next swap: end of Leg ${b.end} (${(legOf(b.end) || {}).exchange || ''}) ~${hm(P.proj[b.end].end)}${nb ? ` · ${blockNames(nb)} get ready` : ''}`);
+    if (ferryMid(b, P)) lines.push(`RV: go to the ferry dock first, ~${hm(P.proj[Number(S.cfg.ferryLeg)].end)}`);
+  }
+  const fl = Number(S.cfg.ferryLeg) || 0;
+  if (fl && P.proj[fl] && !P.proj[fl].actual) { const f = C.ferryAfter(P.proj[fl].end, S.cfg); lines.push(`Ferry: at the dock ~${hm(P.proj[fl].end)}${f.depart ? ` · ${hm(f.depart)} sailing, ${f.slackMin} min spare` : ''}`); }
+  if (P.finish) lines.push(`Finish: ~${clock(P.finish)}`);
+  return lines.join('\n');
+}
+
+// ---- events -----------------------------------------------------------------
+document.addEventListener('click', async e => {
+  const el = e.target.closest('[data-act], nav.tabs button');
+  if (!el) return;
+  if (el.matches('nav.tabs button')) { setTab(el.dataset.tab); return; }
+  const act = el.dataset.act, v = el.dataset.v;
+  const P = () => C.project(D(), Date.now());
+  if (act === 'lock') return openSheet({ kind: 'pin', pin: '' });
+  if (act === 'relock') { lockEditing(); return toast('Locked. This device is view only.'); }
+  if (!S.canEdit && EDIT_ACTS.has(act)) return openSheet({ kind: 'pin', pin: '', err: '' });
+  if (act === 'note') { const L = legOf(Number(v)); return openSheet({ kind: 'note', leg: Number(v), text: (L && L.teamNote) || '' }); }
+  if (act === 'noteclear') { sheetState.text = ''; return confirmSheet(); }
+  if (act === 'scrim') { if (e.target === el) closeSheet(); return; }
+  if (act === 'close') return closeSheet();
+  if (act === 'tab') return setTab(v);
+  if (act === 'handoff' && P().active && P().active.block) {
+    const p = P(), a = p.active, next = a.endLeg + 1;
+    return openSheet({ kind: 'handoff', runner: next <= S.legs.length ? C.suggestRunner(next, D(), p.blocks, null) : null, ago: 0, estimate: false });
+  }
+  if (act === 'checkin') {
+    const p = P(), a = p.active; if (!a || !a.block) return;
+    const pr = p.proj[a.curLeg];
+    return openSheet({ kind: 'checkin', leg: a.curLeg, runner: a.curLeg === a.leg && a.runner ? a.runner : (pr && (pr.runner || pr.suggested)), ago: 0, live: false });
+  }
+  if (act === 'update') return copyText(teamUpdate(), 'Update copied. Paste it into the group chat.');
+  if (act === 'filladd') { const i = Number(v); const x = sheetState.rows[i]; sheetState.rows.splice(i + 1, 0, { leg: x.leg, runner: '', km: '', moving: '', extra: true }); return drawSheet(); }
+  if (act === 'fillrm') { sheetState.rows.splice(Number(v), 1); return drawSheet(); }
+  if (act === 'handoff' || act === 'split') {
+    const p = P(), a = p.active; if (!a || a.block) return;
+    if (act === 'split' && noSplit(a.leg)) return toast('Legs ' + S.legs[0].n + ' and ' + S.legs[S.legs.length - 1].n + ' must be run in full by one person.');
+    const L = legOf(a.leg); const rem = Math.max(0, L.km - p.st[a.leg].kmDone);
+    let km = rem;
+    if (act === 'split') km = Math.min(rem, (Date.now() - a.start) / 1000 / C.paceFor(a.runner, D()));
+    const next = act === 'split' ? a.leg : a.leg + 1;
+    const blocks = p.blocks;
+    return openSheet({ kind: act, km: Math.round(km * 100) / 100, runner: next <= S.legs.length ? C.suggestRunner(next, D(), blocks, a.runner) : null, ago: 0, estimate: false });
+  }
+  if (act === 'more') return openSheet({ kind: 'more' });
+  if (act === 'pause') {
+    const p = P(), a = p.active; if (!a) return;
+    const L = legOf(a.leg); const rem = Math.max(0, L.km - p.st[a.leg].kmDone);
+    return openSheet({ kind: 'pause', km: Math.round(Math.min(rem, (Date.now() - a.start) / 1000 / C.paceFor(a.runner, D())) * 100) / 100, legDone: false, ago: 0 });
+  }
+  if (act === 'start' || act === 'startat') {
+    const p = P();
+    const lastRun = S.runs.reduce((x, r) => (!x || (r.end || 0) > (x.end || 0) ? r : x), null);
+    const leg = act === 'start' ? Number(v) : C.nextLeg(S.runs);
+    return openSheet({ kind: 'start', leg, runner: C.suggestRunner(leg, D(), p.blocks, lastRun ? lastRun.runner : null), ago: 0, estimate: false });
+  }
+  if (act === 'pick') { sheetState.runner = v; if (sheetState.partner === v) sheetState.partner = null; return drawSheet(); }
+  if (act === 'pickp') { sheetState.partner = v; return drawSheet(); }
+  if (act === 'confirm') return confirmSheet();
+  if (act === 'undo') return undo();
+  if (act === 'askdel') { sheetState.confirmDel = true; return drawSheet(); }
+  if (act === 'delrun') { const id = sheetState.run.id; closeSheet(); return save(() => api.del('runs', id), 'Run deleted'); }
+  if (act === 'editrun') {
+    const r = S.runs.find(x => x.id === v); if (!r) return;
+    if (C.isBlock(r)) {
+      if (!r.end) return toast('This block is still running. Tap "Leg ' + r.endLeg + ' done" on Live first.');
+      const p = P(); const rows = [];
+      for (let n = r.leg; n <= r.endLeg; n++) { const pr = p.proj[n] || {}; rows.push({ leg: n, runner: n === r.leg && r.runner ? r.runner : (pr.runner || pr.suggested || ''), km: (legOf(n) || {}).km || '', moving: '' }); }
+      const fl = Number(S.cfg.ferryLeg) || 0;
+      return openSheet({ kind: 'fill', run: r, rows, ferry: fl >= r.leg && fl < r.endLeg });
+    }
+    return openSheet({ kind: 'edit', run: { ...r, startS: toLocalInput(r.start), endS: toLocalInput(r.end), moving: r.movingSec ? C.fmtDur(r.movingSec) : '' } });
+  }
+  if (act === 'addrun') return openSheet({ kind: 'edit', run: { leg: 1, runner: S.runners[0] && S.runners[0].id, startS: toLocalInput(Date.now() - 3600000), endS: toLocalInput(Date.now()), legDone: true } });
+  if (act === 'reset') return openSheet({ kind: 'reset' });
+  if (act === 'blen') {
+    const p = P(); const b = p.blocks[Number(v)];
+    const len = Math.max(1, Math.min(5, b.len + Number(el.dataset.d)));
+    const lens = { ...(S.cfg.blockLens || {}) }; if (len === 5) delete lens[v]; else lens[v] = len;
+    return save(() => api.cfg({ blockLens: lens }));
+  }
+  if (act === 'bgroup') {
+    const p = P(); const b = p.blocks[Number(v)];
+    return save(() => api.cfg({ blockGroups: { ...(S.cfg.blockGroups || {}), [v]: b.group === 'A' ? 'B' : 'A' } }));
+  }
+  if (act === 'addrunner') {
+    const order = S.runners.reduce((m, r) => Math.max(m, r.order || 0), 0) + 1;
+    return save(() => api.add('runners', { name: 'New runner', group: v, paceSec: 300, order, active: true }), 'Runner added. Edit the name below.');
+  }
+  if (act === 'benchrunner') return save(() => api.upd('runners', v, { active: false }), 'Moved off this year\'s roster');
+  if (act === 'unbench') return save(() => api.upd('runners', v, { active: true }), 'Back on the roster');
+  if (act === 'rmrunner') return save(() => api.del('runners', v), 'Runner removed');
+  if (act === 'csv') return copyText(csv(), 'Copied. Paste into Excel or Sheets.');
+  if (act === 'csvsave') {
+    if (SITE) {
+      const url = URL.createObjectURL(new Blob([csv()], { type: 'text/csv' }));
+      const a = document.createElement('a'); a.href = url; a.download = `runtomtl-${S.cfg.year || 'race'}-runs.csv`;
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000); return;
+    }
+    let dl = null; try { dl = window.claude ? await window.claude.use('downloads') : null; } catch (err) {}
+    if (!dl) return toast('Saving files is not available here. Use Copy instead.');
+    try { await dl.save({ filename: `runtomtl-${S.cfg.year || 'race'}-runs.csv`, data: csv() }); } catch (err) { /* viewer declined */ }
+  }
+});
+
+document.addEventListener('change', e => {
+  const el = e.target;
+  if (!S.canEdit && !(sheetState && el.closest('#sheet'))) return;
+  if (el.dataset.fill != null && sheetState && sheetState.kind === 'fill') {
+    sheetState.rows[Number(el.dataset.fill)][el.dataset.f] = el.value;
+    if (el.dataset.f === 'runner') drawSheet();
+    return;
+  }
+  if (el.dataset.sf && sheetState) {
+    const k = el.dataset.sf, val = el.type === 'checkbox' ? el.checked : el.value;
+    if (sheetState.kind === 'edit') sheetState.run[k] = val;
+    else if (k === 'leg' && sheetState.kind === 'checkin') { sheetState.leg = Number(val); const p = C.project(D(), Date.now()); const pr = p.proj[sheetState.leg] || {}; sheetState.runner = pr.runner || pr.suggested || sheetState.runner; drawSheet(); }
+    else if (k === 'leg') { sheetState.leg = Number(val); const p = C.project(D(), Date.now()); sheetState.runner = C.suggestRunner(sheetState.leg, D(), p.blocks, null); drawSheet(); }
+    else { sheetState[k] = val; if (k === 'pair' || k === 'estimate') drawSheet(); }
+    return;
+  }
+  if (el.dataset.cfg) {
+    const k = el.dataset.cfg; let val = el.value;
+    if (k === 'start') val = fromLocalInput(val);
+    else if (['ferryLeg', 'ferryBoardMin', 'ferryCrossMin', 'ferryGapMin', 'paceAdjPct'].includes(k)) val = Number(val) || 0;
+    return save(() => api.cfg({ [k]: val }), 'Saved');
+  }
+  if (el.dataset.act === 'plan') {
+    const plan = { ...(S.cfg.plan || {}) }; if (el.value) plan[el.dataset.v] = el.value; else delete plan[el.dataset.v];
+    return save(() => api.cfg({ plan }));
+  }
+  if (el.dataset.runner) {
+    const f = el.dataset.f; let data;
+    if (f === 'pace') { const p = C.parsePace(el.value); if (!p) { toast('Enter pace as min:sec, like 4:45'); return; } data = { paceSec: p }; }
+    else if (f === 'name') { if (!el.value.trim()) return; data = { name: el.value.trim() }; }
+    else data = { group: el.value };
+    return save(() => api.upd('runners', el.dataset.runner, data), 'Saved');
+  }
+});
+document.addEventListener('input', e => { const el = e.target; if (sheetState && el.dataset.sf && (sheetState.kind === 'note' || sheetState.kind === 'pin')) { sheetState[el.dataset.sf] = el.value; return; } if (el.dataset.fill != null && sheetState && sheetState.kind === 'fill') { sheetState.rows[Number(el.dataset.fill)][el.dataset.f] = el.value; return; } if (el.dataset.sf && sheetState && sheetState.kind === 'edit') sheetState.run[el.dataset.sf] = el.type === 'checkbox' ? el.checked : el.value; else if (el.dataset.sf && sheetState && el.dataset.sf === 'km') sheetState.km = el.value; });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && sheetState) closeSheet();
+  if (e.key === 'Enter' && sheetState && sheetState.kind === 'pin' && e.target.id === 'pin-in') { e.preventDefault(); confirmSheet(); }
+});
+
+function setTab(t) {
+  tab = t; try { localStorage.setItem('rtm.tab', t); } catch (e) {}
+  render(true);
+  window.scrollTo(0, 0);
+}
+
+// ---- render loop --------------------------------------------------------------
+const EDIT_ACTS = new Set(['start', 'startat', 'handoff', 'split', 'more', 'checkin', 'undo', 'pause', 'editrun', 'addrun', 'reset', 'blen', 'bgroup', 'addrunner', 'rmrunner', 'benchrunner', 'unbench', 'note', 'noteclear']);
+function applyGate(root) {
+  const view = !S.canEdit;
+  root.querySelectorAll('[data-act]').forEach(el => {
+    const a = el.dataset.act;
+    if (!EDIT_ACTS.has(a)) return;
+    if (a === 'editrun') { el.disabled = view; return; }
+    el.hidden = view;
+  });
+  root.querySelectorAll('input, select, textarea').forEach(el => { el.disabled = view; });
+  root.querySelectorAll('.actions').forEach(box => { box.hidden = view && ![...box.children].some(c => !c.hidden && c.tagName === 'BUTTON'); });
+}
+let lastHtml = '';
+function render(force) {
+  document.querySelectorAll('nav.tabs button').forEach(b => b.setAttribute('aria-current', b.dataset.tab === tab ? 'page' : 'false'));
+  const banner = S.offline && !S.setupNeeded ? `<div class="banner">${SITE ? 'Lost connection to the race data. Showing the last update; retrying every 30 seconds.' : 'Not connected to the shared race data, so nothing here will sync. Open the page signed in to claude.ai.'}</div>` : '';
+  const v = { live: liveView, plan: planView, team: teamView, log: logView, results: resultsView }[tab] || liveView;
+  const r = v();
+  const html = banner + r.html;
+  header(r.P);
+  const main = $('#main');
+  const editing = main.contains(document.activeElement) && /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName);
+  if (html !== lastHtml && (force || !editing)) { main.innerHTML = html; lastHtml = html; }
+  applyGate(main);
+  if (sheetState && !['edit', 'fill', 'copy', 'note', 'pin'].includes(sheetState.kind) && !$('#sheet').contains(document.activeElement)) drawSheet();
+}
+function tick() {
+  const now = Date.now();
+  document.querySelectorAll('[data-since]').forEach(el => { el.textContent = C.fmtDur((now - Number(el.dataset.since)) / 1000); });
+}
+setInterval(tick, 1000);
+setInterval(() => render(), 20000);
+render();
+connect();
+})();
+</script>
+
+</body>
+</html>
