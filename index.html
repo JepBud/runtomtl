@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#4b1f78">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%234b1f78'/%3E%3Cpath d='M14 46 L30 18 L38 32 L44 24 L52 46 Z' fill='%23fff'/%3E%3C/svg%3E">
+<meta name="theme-color" content="#55288a">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2355288a'/%3E%3Cpath d='M14 46 L30 18 L38 32 L44 24 L52 46 Z' fill='%23fff'/%3E%3C/svg%3E">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,-apple-system,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>RunToMTL Race Control</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12,25 +12,25 @@
 <style>
 /* Layout: phone-first single column; a highway-sign panel for the live leg, cards below, fixed bottom tab bar. */
 :root {
-  --bg: #f2eff6; --surface: #ffffff; --surface-2: #f8f6fb; --ink: #1c1424; --muted: #665b72; --line: #dcd4e6;
-  --sign: #4b1f78; --sign-2: #3a1660; --sign-ink: #ffffff; --sign-dim: #d9c8ef; --accent: #5b2a8f;
+  --bg: #f3f0f7; --surface: #ffffff; --surface-2: #f8f6fb; --ink: #1a1320; --muted: #665b72; --line: #ddd4e8;
+  --sign: #55288a; --sign-2: #3f1d68; --sign-ink: #ffffff; --sign-dim: #e3cff7; --accent: #6b34a8; --sign-edge: #3f1d68; --glow: 0 6px 18px rgba(85, 40, 138, .22);
   --ok: #1d8a4b; --warn: #a96d00; --bad: #c03a2b; --warn-bg: #fff3d9; --bad-bg: #fde7e4; --ok-bg: #e2f4e9;
-  --ga: #5b2a8f; --ga-bg: #ece4f6; --gb: #8a5a1f; --gb-bg: #f3ece2; --gs: #1f7a7a; --gs-bg: #dff0ef;
+  --ga: #6b34a8; --ga-bg: #efe5fa; --gb: #8a5a1f; --gb-bg: #f3ece2; --gs: #1f7a7a; --gs-bg: #dff0ef;
   --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
   --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
   --r: 10px;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #110c17; --surface: #1a1322; --surface-2: #21182b; --ink: #ece6f3; --muted: #9c90ab; --line: #2e2439;
-  --sign: #5a2a8c; --sign-2: #45206c; --sign-ink: #f7f2fc; --sign-dim: #d2bdf0; --accent: #c7a8f2;
+  --bg: #0a080d; --surface: #141018; --surface-2: #1a1520; --ink: #efe9f5; --muted: #9d92aa; --line: #2a2332;
+  --sign: #24123a; --sign-2: #1a0d2b; --sign-ink: #f7f1fd; --sign-dim: #d8b8f8; --accent: #c898e8; --sign-edge: #c898e8; --glow: 0 0 22px rgba(200, 152, 232, .45);
   --ok: #45c07c; --warn: #e5a630; --bad: #f0705f; --warn-bg: #33270d; --bad-bg: #3a1a16; --ok-bg: #12301f;
-  --ga: #c7a8f2; --ga-bg: #2a1f3d; --gb: #e0b27a; --gb-bg: #33281a; --gs: #6fd0cc; --gs-bg: #163030;
+  --ga: #c898e8; --ga-bg: #24173a; --gb: #e0b27a; --gb-bg: #2e2416; --gs: #6fd0cc; --gs-bg: #142c2c;
   color-scheme: dark; } }
 :root[data-theme="dark"] {
-  --bg: #110c17; --surface: #1a1322; --surface-2: #21182b; --ink: #ece6f3; --muted: #9c90ab; --line: #2e2439;
-  --sign: #5a2a8c; --sign-2: #45206c; --sign-ink: #f7f2fc; --sign-dim: #d2bdf0; --accent: #c7a8f2;
+  --bg: #0a080d; --surface: #141018; --surface-2: #1a1520; --ink: #efe9f5; --muted: #9d92aa; --line: #2a2332;
+  --sign: #24123a; --sign-2: #1a0d2b; --sign-ink: #f7f1fd; --sign-dim: #d8b8f8; --accent: #c898e8; --sign-edge: #c898e8; --glow: 0 0 22px rgba(200, 152, 232, .45);
   --ok: #45c07c; --warn: #e5a630; --bad: #f0705f; --warn-bg: #33270d; --bad-bg: #3a1a16; --ok-bg: #12301f;
-  --ga: #c7a8f2; --ga-bg: #2a1f3d; --gb: #e0b27a; --gb-bg: #33281a; --gs: #6fd0cc; --gs-bg: #163030;
+  --ga: #c898e8; --ga-bg: #24173a; --gb: #e0b27a; --gb-bg: #2e2416; --gs: #6fd0cc; --gs-bg: #142c2c;
   color-scheme: dark; }
 html, body { background: var(--bg); color: var(--ink); }
 body { font-family: var(--body); font-size: 15px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
@@ -63,7 +63,7 @@ textarea.note { width: 100%; min-height: 120px; border: 1px solid var(--line); b
 h2.sec { font-family: var(--display); font-weight: 600; font-size: 15px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 22px 0 8px; }
 
 /* The live leg, styled as a highway guide sign */
-.sign { margin-top: 14px; background: var(--sign); color: var(--sign-ink); border-radius: 14px; padding: 16px 18px 14px; border: 3px solid var(--sign-2); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--sign-ink) 55%, transparent); }
+.sign { margin-top: 14px; background: var(--sign); color: var(--sign-ink); border-radius: 14px; padding: 16px 18px 14px; border: 2px solid var(--sign-edge); box-shadow: var(--glow); }
 .sign .meta { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; font-family: var(--display); font-weight: 600; font-size: 16px; letter-spacing: .06em; text-transform: uppercase; color: var(--sign-dim); }
 .sign .meta .legno { background: var(--sign-ink); color: var(--sign); padding: 1px 8px; border-radius: 4px; font-weight: 700; }
 .sign h1 { font-family: var(--display); font-weight: 700; font-size: clamp(30px, 8vw, 42px); line-height: 1.02; margin: 8px 0 2px; text-wrap: balance; }
@@ -104,8 +104,8 @@ h2.sec { font-family: var(--display); font-weight: 600; font-size: 15px; letter-
 .blk { display: flex; gap: 2px; padding: 3px; border-radius: 6px; }
 .blk.A { background: var(--ga-bg); } .blk.B { background: var(--gb-bg); }
 .cell { width: 14px; height: 18px; border-radius: 3px; background: var(--surface); border: 1px solid var(--line); }
-.cell.done { background: var(--sign); border-color: var(--sign); }
-.cell.partial { background: color-mix(in srgb, var(--sign) 50%, var(--surface)); border-color: var(--sign); }
+.cell.done { background: var(--accent); border-color: var(--accent); }
+.cell.partial { background: color-mix(in srgb, var(--accent) 50%, var(--surface)); border-color: var(--accent); }
 .cell.active { background: var(--warn); border-color: var(--warn); }
 .cell.block { background: repeating-linear-gradient(45deg, var(--warn) 0 3px, var(--surface) 3px 6px); border-color: var(--warn); }
 .sign.est { background: var(--sign-2); border-style: dashed; }
