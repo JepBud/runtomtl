@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#55288a">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2355288a'/%3E%3Cpath d='M14 46 L30 18 L38 32 L44 24 L52 46 Z' fill='%23fff'/%3E%3C/svg%3E">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,-apple-system,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
-<title>RunToMTL Race Control</title>
+<title>SOB2MTL Race Control</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
 <style>
@@ -192,7 +192,7 @@ nav.tabs button[aria-current="page"] { color: var(--ink); border-top-color: var(
 
 
 <header class="top"><div class="in">
-  <div class="brand">RunTo<span>MTL</span> <span id="yr" class="num"></span></div>
+  <div class="brand">SOB<span>2</span>MTL <span id="yr" class="num"></span></div>
   <span id="sync" class="sync" title="Sync status"></span>
   <button id="lockbtn" class="lockbtn" data-act="lock" hidden></button>
   <div class="raceclock" id="raceclock"></div>
@@ -1249,7 +1249,7 @@ async function copyText(t, okMsg) {
 }
 function teamUpdate() {
   const now = Date.now(); const P = C.project(D(), now); const a = P.active; const N = S.legs.length;
-  const lines = [`RunToMTL update · ${hm(now)}`];
+  const lines = [`SOB2MTL update · ${hm(now)}`];
   if (P.st[N] && P.st[N].s === 'done') { lines.push('We are finished! See you on Mont Royal.'); return lines.join('\n'); }
   if (a && a.block) {
     const pr = P.proj[a.curLeg], who = a.curLeg === a.leg && a.runner ? a.runner : (pr.runner || pr.suggested);
