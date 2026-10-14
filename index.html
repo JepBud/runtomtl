@@ -15,6 +15,7 @@
   --bg: #f3f0f7; --surface: #ffffff; --surface-2: #f8f6fb; --ink: #1a1320; --muted: #665b72; --line: #ddd4e8;
   --sign: #55288a; --sign-2: #3f1d68; --sign-ink: #ffffff; --sign-dim: #e3cff7; --accent: #6b34a8; --sign-edge: #3f1d68; --glow: 0 6px 18px rgba(85, 40, 138, .22);
   --ok: #1d8a4b; --warn: #a96d00; --bad: #c03a2b; --warn-bg: #fff3d9; --bad-bg: #fde7e4; --ok-bg: #e2f4e9;
+  --route-a: #b49ad6; --route-b: #8f85a0; --route-now: #d98a00;
   --ga: #6b34a8; --ga-bg: #efe5fa; --gb: #8a5a1f; --gb-bg: #f3ece2; --gs: #1f7a7a; --gs-bg: #dff0ef;
   --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
   --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -24,12 +25,14 @@
   --bg: #0a080d; --surface: #141018; --surface-2: #1a1520; --ink: #efe9f5; --muted: #9d92aa; --line: #2a2332;
   --sign: #24123a; --sign-2: #1a0d2b; --sign-ink: #f7f1fd; --sign-dim: #d8b8f8; --accent: #c898e8; --sign-edge: #c898e8; --glow: 0 0 22px rgba(200, 152, 232, .45);
   --ok: #45c07c; --warn: #e5a630; --bad: #f0705f; --warn-bg: #33270d; --bad-bg: #3a1a16; --ok-bg: #12301f;
+  --route-a: #7d5fa6; --route-b: #6a6176; --route-now: #f2b53a;
   --ga: #c898e8; --ga-bg: #24173a; --gb: #e0b27a; --gb-bg: #2e2416; --gs: #6fd0cc; --gs-bg: #142c2c;
   color-scheme: dark; } }
 :root[data-theme="dark"] {
   --bg: #0a080d; --surface: #141018; --surface-2: #1a1520; --ink: #efe9f5; --muted: #9d92aa; --line: #2a2332;
   --sign: #24123a; --sign-2: #1a0d2b; --sign-ink: #f7f1fd; --sign-dim: #d8b8f8; --accent: #c898e8; --sign-edge: #c898e8; --glow: 0 0 22px rgba(200, 152, 232, .45);
   --ok: #45c07c; --warn: #e5a630; --bad: #f0705f; --warn-bg: #33270d; --bad-bg: #3a1a16; --ok-bg: #12301f;
+  --route-a: #7d5fa6; --route-b: #6a6176; --route-now: #f2b53a;
   --ga: #c898e8; --ga-bg: #24173a; --gb: #e0b27a; --gb-bg: #2e2416; --gs: #6fd0cc; --gs-bg: #142c2c;
   color-scheme: dark; }
 html, body { background: var(--bg); color: var(--ink); }
@@ -160,7 +163,9 @@ tr.hl td { font-weight: 700; }
 
 /* Bottom tabs */
 nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
-nav.tabs .in { max-width: 720px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, 1fr); }
+nav.tabs .in { max-width: 720px; margin: 0 auto; display: flex; }
+nav.tabs .in button { flex: 1 1 0; min-width: 0; }
+nav.tabs.six button { font-size: 14px; letter-spacing: .04em; }
 nav.tabs button { border: 0; background: transparent; padding: 10px 2px 12px; font-family: var(--display); font-weight: 600; font-size: 15px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-top: 3px solid transparent; }
 nav.tabs button[aria-current="page"] { color: var(--ink); border-top-color: var(--accent); }
 
@@ -183,6 +188,42 @@ nav.tabs button[aria-current="page"] { color: var(--ink); border-top-color: var(
 .empty b { display: block; color: var(--ink); font-family: var(--display); font-size: 22px; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(76px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; z-index: 20; font-weight: 700; font-size: 14px; max-width: calc(100% - 32px); }
 @media (prefers-reduced-motion: no-preference) { .bar i { transition: width .8s linear; } }
+/* Map tab */
+.mapview { position: fixed; left: 0; right: 0; top: 60px; bottom: 56px; z-index: 4; background: var(--bg); }
+#map { position: absolute; inset: 0; background: var(--surface-2); }
+.leaflet-container { font-family: var(--body); background: var(--surface-2); }
+.leaflet-control-zoom a { background: var(--surface) !important; color: var(--ink) !important; border-color: var(--line) !important; }
+.leaflet-bar { border: 1px solid var(--line) !important; box-shadow: none !important; }
+.leaflet-control-attribution { background: color-mix(in srgb, var(--surface) 82%, transparent) !important; color: var(--muted) !important; font-size: 10px; }
+.leaflet-control-attribution a { color: var(--muted) !important; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .leaflet-tile-pane { filter: invert(1) hue-rotate(185deg) brightness(.82) contrast(.9) saturate(.6); } }
+:root[data-theme="dark"] .leaflet-tile-pane { filter: invert(1) hue-rotate(185deg) brightness(.82) contrast(.9) saturate(.6); }
+.mapctl { position: absolute; top: 10px; right: 10px; z-index: 500; display: grid; gap: 6px; justify-items: end; }
+.mapctl button { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 7px 12px; font-size: 13px; font-weight: 700; box-shadow: 0 2px 8px rgba(0,0,0,.14); }
+.mapctl button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.mapmsg { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); z-index: 600; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; font-size: 14px; max-width: calc(100% - 32px); text-align: center; }
+.legcard { position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 600; max-width: 560px; margin: 0 auto; background: var(--sign); color: var(--sign-ink); border: 2px solid var(--sign-edge); box-shadow: var(--glow); border-radius: 14px; padding: 10px 14px 12px; max-height: 58%; overflow-y: auto; }
+.legcard:empty { display: none; }
+.legcard .meta { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-family: var(--display); font-weight: 600; font-size: 15px; letter-spacing: .06em; text-transform: uppercase; color: var(--sign-dim); }
+.legcard .legno { background: var(--sign-ink); color: var(--sign); padding: 0 7px; border-radius: 4px; font-weight: 700; }
+.legcard .live { background: var(--route-now); color: #1a1320; padding: 0 7px; border-radius: 4px; font-weight: 700; }
+.legcard h2 { font-family: var(--display); font-weight: 700; font-size: 24px; line-height: 1.05; margin: 4px 0 2px; text-wrap: balance; }
+.legcard .dest { color: var(--sign-dim); font-size: 13.5px; }
+.legcard .lrow { display: flex; gap: 4px 16px; flex-wrap: wrap; margin-top: 8px; font-size: 14px; }
+.legcard .note { margin-top: 8px; font-size: 13px; background: color-mix(in srgb, var(--sign-ink) 12%, transparent); border-radius: 8px; padding: 6px 8px; display: grid; gap: 3px; }
+.legcard .links { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; font-size: 13px; }
+.legcard a { color: var(--sign-ink); font-weight: 700; }
+.legcard .nav { display: flex; gap: 6px; margin-left: auto; }
+.legcard .nav button { background: color-mix(in srgb, var(--sign-ink) 14%, transparent); border: 0; color: var(--sign-ink); border-radius: 8px; width: 34px; height: 30px; font-weight: 700; }
+.legcard .nav button:disabled { opacity: .4; }
+.legcard .more { background: color-mix(in srgb, var(--sign-ink) 14%, transparent); border: 0; color: var(--sign-ink); border-radius: 999px; padding: 3px 10px; font-size: 12.5px; font-weight: 700; margin-top: 8px; margin-right: 6px; }
+.runner-dot { width: 18px; height: 18px; border-radius: 50%; background: var(--route-now); border: 3px solid var(--surface); }
+@media (prefers-reduced-motion: no-preference) { .runner-dot { animation: rpulse 1.8s infinite; } }
+@keyframes rpulse { 0% { box-shadow: 0 0 0 0 rgba(224,155,22,.6); } 70% { box-shadow: 0 0 0 14px rgba(224,155,22,0); } 100% { box-shadow: 0 0 0 0 rgba(224,155,22,0); } }
+.maptag { font-family: var(--display); font-weight: 700; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; white-space: nowrap; box-shadow: 0 1px 4px rgba(0,0,0,.18); display: inline-block; }
+.maptag.now { background: var(--route-now); color: #1a1320; border-color: transparent; }
+.me-dot { width: 16px; height: 16px; border-radius: 50%; background: #2f7cf6; border: 3px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.2); }
+@media (max-width: 420px) { .legcard h2 { font-size: 22px; } }
 @media (max-width: 420px) { .trow { grid-template-columns: 1fr 70px 70px 28px; } .actions { grid-template-columns: 1fr 1fr; } .actions .btn.primary { grid-column: 1 / -1; } }
 </style>
 </head>
@@ -198,8 +239,18 @@ nav.tabs button[aria-current="page"] { color: var(--ink); border-top-color: var(
   <div class="raceclock" id="raceclock"></div>
 </div></header>
 <main class="wrap" id="main"></main>
+<section id="mapview" class="mapview" hidden aria-label="Route map">
+  <div id="map"></div>
+  <div class="mapctl">
+    <button data-act="mapnow">Current leg</button>
+    <button data-act="mapall">Whole route</button>
+    <button data-act="mapme" id="mapme" aria-pressed="false">My location</button>
+  </div>
+  <div id="mapmsg" class="mapmsg" hidden>Loading the map…</div>
+  <div id="mapcard" class="legcard" aria-live="polite"></div>
+</section>
 <nav class="tabs" aria-label="Sections"><div class="in">
-  <button data-tab="live">Live</button><button data-tab="plan">Plan</button><button data-tab="team">Team</button><button data-tab="log">Log</button><button data-tab="results">Results</button>
+  <button data-tab="live">Live</button><button data-tab="plan">Plan</button><button data-tab="map" hidden>Map</button><button data-tab="team">Team</button><button data-tab="log">Log</button><button data-tab="results">Results</button>
 </div></nav>
 <div id="sheet"></div>
 <div id="toast"></div>
@@ -480,7 +531,7 @@ const S = { legs: [], runners: [], runs: [], cfg: {}, cfgExists: false, loaded: 
 const SB = { client: null, pin: null, lastOk: 0 };
 let tab = 'live';
 try { tab = localStorage.getItem('rtm.tab') || 'live'; } catch (e) {}
-if (/^#(live|plan|team|log|results)$/.test(location.hash)) tab = location.hash.slice(1);
+if (/^#(live|plan|map|team|log|results)$/.test(location.hash)) tab = location.hash.slice(1);
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -856,7 +907,7 @@ function planView() {
       const L = legOf(n), pr = P.proj[n], s = P.st[n].s;
       const tag = (L.note || L.driverNote ? ' <span class="pill ok">Updated</span>' : '') + (n === fl ? ' <span class="pill warn">Ferry</span>' : '') + (L.carFree ? ' <span class="pill">No car access</span>' : '') + (noSplit(n) ? ' <span class="pill">No splits</span>' : '');
       rows.push(`<div class="prow"><div class="n num" style="font-family:var(--display);font-weight:700;color:var(--muted)">${n}</div>
-        <div style="min-width:0"><b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(L.name)}${tag}</b><span class="hint">${km1(L.km)} km · ${s === 'done' ? 'done' : s === 'skipped' ? 'skipped' : pr ? (pr.actual ? 'done' : '~' + clock(pr.start)) : ''}</span><button class="nbtn" data-act="note" data-v="${n}">${L.teamNote ? 'Edit note' : '+ Note'}</button>${L.teamNote ? `<div class="lnote">${esc(L.teamNote)}</div>` : ''}</div>
+        <div style="min-width:0"><b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(L.name)}${tag}</b><span class="hint">${km1(L.km)} km · ${s === 'done' ? 'done' : s === 'skipped' ? 'skipped' : pr ? (pr.actual ? 'done' : '~' + clock(pr.start)) : ''}</span><button class="nbtn" data-act="note" data-v="${n}">Edit leg</button>${L.teamNote ? `<div class="lnote">${esc(L.teamNote)}</div>` : ''}</div>
         <select id="plan-${n}" data-act="plan" data-v="${n}" aria-label="Runner for leg ${n}">${opts(n, b.group)}</select></div>`);
     }
     return `<div class="bhead"><span class="ttl">Block ${b.i + 1} · Legs ${b.start}–${b.end}</span>
@@ -1096,10 +1147,12 @@ function drawSheet() {
       <div class="acts">${r.id ? (st.confirmDel ? `<button class="btn danger" data-act="delrun">Delete for good</button>` : `<button class="btn quiet" data-act="askdel">Delete</button>`) : ''}<span style="flex:1"></span><button class="btn quiet" data-act="close">Cancel</button><button class="btn primary" data-act="confirm">Save</button></div>`;
   } else if (st.kind === 'note') {
     const L = legOf(st.leg) || {};
-    body = `<h3>Team note · Leg ${st.leg}</h3>
-      <div class="hint">${esc(L.name || '')}. Everyone viewing the tracker sees this note on the leg.</div>
-      <textarea class="note" id="n-text" data-sf="text" placeholder="e.g. Bring a headlamp. Watch the turn at Port Union Rd. Bike pacer needed.">${esc(st.text)}</textarea>
-      <div class="acts">${L.teamNote ? '<button class="btn quiet" data-act="noteclear">Delete note</button>' : ''}<span style="flex:1"></span><button class="btn quiet" data-act="close">Cancel</button><button class="btn primary" data-act="confirm">Save note</button></div>`;
+    body = `<h3>Edit Leg ${st.leg}</h3>
+      <div class="hint">${esc(L.name || '')}</div>
+      <div class="field"><label for="n-km">Official distance (km) · used for every ETA</label><input id="n-km" type="number" step="0.01" min="0.5" max="40" inputmode="decimal" data-sf="km" value="${esc(st.km)}"></div>
+      <div class="field"><label for="n-text">Team note · everyone sees this on the leg</label>
+      <textarea class="note" id="n-text" data-sf="text" placeholder="e.g. Bring a headlamp. Watch the turn at Port Union Rd. Bike pacer needed.">${esc(st.text)}</textarea></div>
+      <div class="acts">${L.teamNote ? '<button class="btn quiet" data-act="noteclear">Delete note</button>' : ''}<span style="flex:1"></span><button class="btn quiet" data-act="close">Cancel</button><button class="btn primary" data-act="confirm">Save</button></div>`;
   } else if (st.kind === 'pin') {
     body = `<h3>${S.canEdit ? 'Editing is unlocked' : 'Unlock editing'}</h3>
       ${S.canEdit ? `<div class="hint">This device can tap handoffs and make changes. Lock it to go back to view only.</div>
@@ -1203,8 +1256,11 @@ async function confirmSheet() {
   } else if (st.kind === 'note') {
     const L = legOf(st.leg); if (!L) return closeSheet();
     const text = String(st.text || '').trim().slice(0, 1000);
+    const km = Math.round(parseFloat(st.km) * 100) / 100;
+    if (!(km >= 0.5 && km <= 40)) { toast('Enter a distance between 0.5 and 40 km.'); return; }
+    const patch = { teamNote: text }; if (km !== L.km) patch.km = km;
     closeSheet();
-    await save(() => api.upd('legs', L.id, { teamNote: text }), text ? 'Note saved' : 'Note deleted');
+    await save(() => api.upd('legs', L.id, patch), patch.km ? `Leg ${L.n} is now ${km} km` : (text ? 'Note saved' : 'Note deleted'));
   } else if (st.kind === 'pin') {
     const pin = String(st.pin || '').trim();
     if (!pin) { st.err = 'Enter the PIN.'; return drawSheet(); }
@@ -1278,9 +1334,14 @@ document.addEventListener('click', async e => {
   const act = el.dataset.act, v = el.dataset.v;
   const P = () => C.project(D(), Date.now());
   if (act === 'lock') return openSheet({ kind: 'pin', pin: '' });
+  if (act === 'mapmore') { MAPV.expanded = !MAPV.expanded; return updateMap(); }
+  if (act === 'mapsel') return mapSelect(Number(v));
+  if (act === 'mapnow') { const p = P(); const c = mapCurrent(p) || Math.min(C.nextLeg(S.runs), S.legs.length); MAPV.sel = null; updateMap(); return mapFocus([pathOf(c)]); }
+  if (act === 'mapall') return mapFocus(S.legs.map(l => pathOf(l.n)));
+  if (act === 'mapme') return toggleMyLocation();
   if (act === 'relock') { lockEditing(); return toast('Locked. This device is view only.'); }
   if (!S.canEdit && EDIT_ACTS.has(act)) return openSheet({ kind: 'pin', pin: '', err: '' });
-  if (act === 'note') { const L = legOf(Number(v)); return openSheet({ kind: 'note', leg: Number(v), text: (L && L.teamNote) || '' }); }
+  if (act === 'note') { const L = legOf(Number(v)); return openSheet({ kind: 'note', leg: Number(v), text: (L && L.teamNote) || '', km: L ? L.km : '' }); }
   if (act === 'noteclear') { sheetState.text = ''; return confirmSheet(); }
   if (act === 'scrim') { if (e.target === el) closeSheet(); return; }
   if (act === 'close') return closeSheet();
@@ -1414,6 +1475,155 @@ function setTab(t) {
   window.scrollTo(0, 0);
 }
 
+// ---- map tab ------------------------------------------------------------------
+const LEAF_JS = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';
+const LEAF_CSS = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';
+const MAPV = { ready: false, loading: false, map: null, routes: null, lines: {}, runner: null, runnerTag: null, me: null, meAcc: null, watch: null, sel: null, expanded: false, placed: false };
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function loadScript(src) { return new Promise((res, rej) => { const el = document.createElement('script'); el.src = src; el.onload = res; el.onerror = rej; document.head.appendChild(el); }); }
+function sizeMapView() {
+  const mv = $('#mapview'); if (mv.hidden) return;
+  mv.style.top = Math.round($('header.top').getBoundingClientRect().bottom) + 'px';
+  mv.style.bottom = Math.round(window.innerHeight - $('nav.tabs').getBoundingClientRect().top) + 'px';
+  if (MAPV.map) MAPV.map.invalidateSize();
+}
+async function initMap() {
+  if (MAPV.ready || MAPV.loading) return;
+  MAPV.loading = true; const msg = $('#mapmsg'); msg.hidden = false; msg.textContent = 'Loading the map…';
+  try {
+    if (!document.querySelector('link[data-leaflet]')) { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = LEAF_CSS; l.dataset.leaflet = '1'; document.head.appendChild(l); }
+    const [, routes] = await Promise.all([window.L ? null : loadScript(LEAF_JS), fetch('routes.json').then(r => { if (!r.ok) throw new Error('routes'); return r.json(); })]);
+    MAPV.routes = routes; buildMap(); MAPV.ready = true; msg.hidden = true;
+  } catch (e) {
+    msg.textContent = 'The map could not load. Check your connection, then open the Map tab again.';
+  }
+  MAPV.loading = false;
+  updateMap();
+}
+function pathOf(n) { return (MAPV.routes && MAPV.routes[n]) || []; }
+function buildMap() {
+  const L = window.L;
+  const m = L.map('map', { zoomControl: true, preferCanvas: false });
+  MAPV.map = m;
+  const allPts = S.legs.flatMap(l => pathOf(l.n));
+  if (allPts.length) m.fitBounds(L.latLngBounds(allPts)); else m.setView([44.3, -76.5], 7);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors' }).addTo(m);
+  S.legs.forEach(leg => {
+    const path = pathOf(leg.n); if (path.length < 2) return;
+    const halo = L.polyline(path, { weight: 16, opacity: 0, interactive: false }).addTo(m);
+    const line = L.polyline(path, { weight: 4, lineCap: 'round', lineJoin: 'round' }).addTo(m);
+    const hit = L.polyline(path, { weight: 24, opacity: 0 }).addTo(m);
+    const dot = L.circleMarker(path[path.length - 1], { radius: 3, weight: 1.5, fillOpacity: 1 }).addTo(m);
+    [line, hit, dot].forEach(x => x.on('click', () => mapSelect(leg.n, false)));
+    MAPV.lines[leg.n] = { halo, line, dot };
+  });
+  const fl = Number(S.cfg.ferryLeg) || 0;
+  if (fl && pathOf(fl).length && pathOf(fl + 1).length) {
+    L.polyline([pathOf(fl).slice(-1)[0], pathOf(fl + 1)[0]], { weight: 3, dashArray: '4 8', color: cssVar('--muted'), interactive: false }).addTo(m);
+    L.marker(pathOf(fl).slice(-1)[0], { icon: L.divIcon({ className: '', html: '<span class="maptag">Ferry</span>', iconSize: null, iconAnchor: [52, 12] }), interactive: false }).addTo(m);
+  }
+  const first = pathOf(S.legs[0] && S.legs[0].n)[0], last = pathOf(S.legs.length).slice(-1)[0];
+  if (first) L.marker(first, { icon: L.divIcon({ className: '', html: '<span class="maptag">Start</span>', iconSize: null, iconAnchor: [-10, 10] }), interactive: false }).addTo(m);
+  if (last) L.marker(last, { icon: L.divIcon({ className: '', html: '<span class="maptag">Finish</span>', iconSize: null, iconAnchor: [-10, 10] }), interactive: false }).addTo(m);
+  MAPV.runner = L.marker([0, 0], { icon: L.divIcon({ className: '', html: '<div class="runner-dot"></div>', iconSize: [18, 18], iconAnchor: [9, 9] }), zIndexOffset: 1000 });
+  MAPV.runnerTag = L.marker([0, 0], { icon: L.divIcon({ className: '', html: '', iconSize: null, iconAnchor: [-14, 10] }), interactive: false, zIndexOffset: 1000 });
+  MAPV.runner.on('click', () => { const c = mapCurrent(C.project(D(), Date.now())); if (c) mapSelect(c, false); });
+}
+function along(path, f) {
+  const d = (a, b) => Math.hypot(a[0] - b[0], (a[1] - b[1]) * Math.cos(a[0] * Math.PI / 180));
+  let tot = 0; for (let i = 1; i < path.length; i++) tot += d(path[i - 1], path[i]);
+  let goal = tot * Math.max(0, Math.min(1, f));
+  for (let i = 1; i < path.length; i++) { const sg = d(path[i - 1], path[i]); if (goal <= sg) { const k = sg ? goal / sg : 0; return [path[i - 1][0] + (path[i][0] - path[i - 1][0]) * k, path[i - 1][1] + (path[i][1] - path[i - 1][1]) * k]; } goal -= sg; }
+  return path[path.length - 1];
+}
+function mapCurrent(P) { const a = P.active; return a ? (a.block ? a.curLeg : a.leg) : null; }
+function mapFocus(paths) {
+  const m = MAPV.map; if (!m) return;
+  const pts = paths.flat(); if (!pts.length) return;
+  const card = $('#mapcard');
+  m.flyToBounds(window.L.latLngBounds(pts), { padding: [30, 30], paddingBottomRight: [30, (card.offsetHeight || 140) + 20], maxZoom: 15, duration: .6 });
+}
+function mapSelect(n, fly) {
+  const N = S.legs.length; n = Math.max(1, Math.min(N, n));
+  MAPV.sel = n; updateMap();
+  if (fly !== false) mapFocus([pathOf(n)]);
+}
+function updateMap() {
+  if (!MAPV.ready) return;
+  const now = Date.now(), P = C.project(D(), now), cur = mapCurrent(P), next = cur || Math.min(C.nextLeg(S.runs), S.legs.length);
+  const col = { a: cssVar('--route-a'), b: cssVar('--route-b'), done: cssVar('--accent'), now: cssVar('--route-now'), surf: cssVar('--surface'), ink: cssVar('--ink'), muted: cssVar('--muted') };
+  const sel = MAPV.sel || next;
+  S.legs.forEach(leg => {
+    const ly = MAPV.lines[leg.n]; if (!ly) return;
+    const s = P.st[leg.n] ? P.st[leg.n].s : 'upcoming';
+    const b = C.blockOf(P.blocks, leg.n);
+    const isNow = leg.n === cur, done = s === 'done';
+    const base = isNow ? col.now : done ? col.done : s === 'skipped' ? col.muted : (b && b.i % 2 ? col.b : col.a);
+    ly.line.setStyle({ color: base, weight: isNow ? 7 : leg.n === sel ? 6 : done ? 5 : 4, opacity: s === 'skipped' ? .5 : 1, dashArray: s === 'skipped' ? '2 8' : null });
+    ly.halo.setStyle({ color: isNow ? col.now : col.done, opacity: isNow ? .28 : leg.n === sel ? .18 : 0 });
+    const swap = b && b.end === leg.n;
+    ly.dot.setStyle({ radius: swap ? 6 : 3, weight: swap ? 3 : 1.5, color: swap ? col.ink : base, fillColor: swap ? col.surf : base });
+  });
+  if (cur && pathOf(cur).length) {
+    const pr = P.proj[cur] || {};
+    const f = pr.end > pr.start ? (now - pr.start) / (pr.end - pr.start) : 0;
+    const pos = along(pathOf(cur), Math.min(.97, f));
+    const a = P.active; const who = a.block ? (cur === a.leg && a.runner ? runnerName(a.runner) : runnerName(pr.runner || pr.suggested)) + ' (est.)' : whoName(a);
+    MAPV.runner.setLatLng(pos).addTo(MAPV.map);
+    MAPV.runnerTag.setLatLng(pos).setIcon(window.L.divIcon({ className: '', html: `<span class="maptag now">${esc(who)} · Leg ${cur}</span>`, iconSize: null, iconAnchor: [-14, 10] })).addTo(MAPV.map);
+  } else { MAPV.runner.remove(); MAPV.runnerTag.remove(); }
+  $('#mapcard').innerHTML = mapCard(sel, P, cur);
+  applyGate($('#mapcard'));
+  if (!MAPV.placed) {
+    MAPV.placed = true;
+    setTimeout(() => { sizeMapView(); if (cur) mapFocus([pathOf(cur)]); else if (!S.runs.length) mapFocus(S.legs.map(l => pathOf(l.n))); else mapFocus([pathOf(next)]); }, 50);
+  }
+}
+function mapCard(n, P, cur) {
+  const L = legOf(n); if (!L) return '';
+  const st = P.st[n] || { s: 'upcoming', runs: [] }, pr = P.proj[n] || {}, b = C.blockOf(P.blocks, n);
+  const done = st.s === 'done', isNow = n === cur;
+  let who = '', time = '';
+  if (done || st.runs.length) {
+    const ids = [...new Set(st.runs.flatMap(r => [r.runner, r.partner]).filter(Boolean))];
+    who = ids.length ? ids.map(runnerName).join(' + ') : (st.est ? 'Estimated block' : '');
+  }
+  if (isNow) { const a = P.active; who = a.block ? `${runnerName(pr.runner || pr.suggested || a.runner)} (estimated)` : who || whoName(a); time = pr.overdue ? 'Due now' : `Arrives ~${hm(pr.end)}`; }
+  else if (done) time = `Done ${hm(pr.start)}–${hm(pr.end)}${pr.estimated ? ' (est.)' : ''}`;
+  else { who = who || (pr.runner ? runnerName(pr.runner) : pr.suggested ? runnerName(pr.suggested) + '?' : 'Pick on the day'); time = pr.start ? `Est. start ~${clock(pr.start)}` : ''; }
+  const notes = [L.note && `<div><b>Route change:</b> ${esc(L.note)}</div>`, L.driverNote && `<div><b>Drivers:</b> ${esc(L.driverNote)}</div>`, L.teamNote && `<div><b>Team note:</b> ${esc(L.teamNote)}</div>`, L.carFree && '<div><b>No car access:</b> runner goes solo, or two runners with a bike.</div>', noSplit(n) && '<div><b>No splits:</b> one runner runs the whole leg.</div>'].filter(Boolean);
+  const links = [safeUrl(L.routeUrl) && `<a href="${esc(L.routeUrl)}" target="_blank" rel="noopener">Strava route</a>`, safeUrl(L.mapUrl) && `<a href="${esc(L.mapUrl)}" target="_blank" rel="noopener">Exchange on map</a>`].filter(Boolean);
+  const crew = b ? crewIds(b).map(runnerName).join(', ') : '';
+  const fl = Number(S.cfg.ferryLeg) || 0;
+  return `<div class="meta"><span class="legno">Leg ${n}</span>${isNow ? '<span class="live">Running now</span>' : ''}<span>${km1(L.km)} km</span>${b ? `<span>Block ${b.i + 1}</span>` : ''}${n === fl ? '<span>Ferry leg</span>' : ''}
+      <span class="nav"><button data-act="mapsel" data-v="${n - 1}" aria-label="Previous leg" ${n <= 1 ? 'disabled' : ''}>‹</button><button data-act="mapsel" data-v="${n + 1}" aria-label="Next leg" ${n >= S.legs.length ? 'disabled' : ''}>›</button></span></div>
+    <h2>${esc(L.name)}</h2>
+    <div class="dest">→ ${esc(L.exchange || '')}</div>
+    <div class="lrow"><span>${esc(who)}</span><span><b>${esc(time)}</b></span></div>
+    ${MAPV.expanded ? `${notes.length ? `<div class="note">${notes.join('')}</div>` : ''}
+      <div class="links">${links.join('')}${crew ? `<span style="opacity:.85">Block crew: ${esc(crew)}</span>` : ''}</div>
+      <button class="more" data-act="mapmore">Less ▴</button><button class="more" data-act="note" data-v="${n}">Edit leg</button>`
+    : `<button class="more" data-act="mapmore">${notes.length ? `Notes (${notes.length}) · ` : ''}Links · Crew ▾</button>`}`;
+}
+function toggleMyLocation() {
+  const btn = $('#mapme');
+  if (MAPV.watch != null) {
+    navigator.geolocation.clearWatch(MAPV.watch); MAPV.watch = null; btn.setAttribute('aria-pressed', 'false');
+    if (MAPV.me) { MAPV.me.remove(); MAPV.meAcc.remove(); } return;
+  }
+  if (!navigator.geolocation) return toast('This browser cannot share your location.');
+  btn.setAttribute('aria-pressed', 'true');
+  let first = true;
+  MAPV.watch = navigator.geolocation.watchPosition(pos => {
+    const ll = [pos.coords.latitude, pos.coords.longitude], L = window.L;
+    if (!MAPV.me) { MAPV.me = L.marker(ll, { icon: L.divIcon({ className: '', html: '<div class="me-dot"></div>', iconSize: [16, 16], iconAnchor: [8, 8] }), interactive: false, zIndexOffset: 900 }); MAPV.meAcc = L.circle(ll, { radius: pos.coords.accuracy, weight: 1, color: '#2f7cf6', fillOpacity: .1, interactive: false }); }
+    MAPV.me.setLatLng(ll).addTo(MAPV.map); MAPV.meAcc.setLatLng(ll).setRadius(pos.coords.accuracy).addTo(MAPV.map);
+    if (first) { first = false; MAPV.map.flyTo(ll, Math.max(MAPV.map.getZoom(), 14), { duration: .6 }); }
+  }, () => { toast('Location is blocked for this site. Allow it in your browser settings to use My location.'); toggleMyLocation(); }, { enableHighAccuracy: true, maximumAge: 15000 });
+}
+window.addEventListener('resize', sizeMapView);
+try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => updateMap()); } catch (e) {}
+
 // ---- render loop --------------------------------------------------------------
 const EDIT_ACTS = new Set(['start', 'startat', 'handoff', 'split', 'more', 'checkin', 'undo', 'pause', 'editrun', 'addrun', 'reset', 'blen', 'bgroup', 'addrunner', 'rmrunner', 'benchrunner', 'unbench', 'note', 'noteclear']);
 function applyGate(root) {
@@ -1431,6 +1641,15 @@ let lastHtml = '';
 function render(force) {
   document.querySelectorAll('nav.tabs button').forEach(b => b.setAttribute('aria-current', b.dataset.tab === tab ? 'page' : 'false'));
   const banner = S.offline && !S.setupNeeded ? `<div class="banner">${SITE ? 'Lost connection to the race data. Showing the last update; retrying every 30 seconds.' : 'Not connected to the shared race data, so nothing here will sync. Open the page signed in to claude.ai.'}</div>` : '';
+  if (tab === 'map' && !SITE) tab = 'live';
+  const nav = $('nav.tabs'); const mt = nav.querySelector('[data-tab="map"]'); mt.hidden = !SITE; nav.classList.toggle('six', SITE);
+  const onMap = tab === 'map';
+  $('#mapview').hidden = !onMap; $('#main').hidden = onMap;
+  if (onMap) {
+    header(); sizeMapView(); if (S.legs.length) { if (!MAPV.ready) initMap(); else updateMap(); }
+    if (sheetState && !['edit', 'fill', 'copy', 'note', 'pin'].includes(sheetState.kind) && !$('#sheet').contains(document.activeElement)) drawSheet();
+    return;
+  }
   const v = { live: liveView, plan: planView, team: teamView, log: logView, results: resultsView }[tab] || liveView;
   const r = v();
   const html = banner + r.html;
