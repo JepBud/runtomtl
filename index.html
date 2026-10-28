@@ -1150,6 +1150,7 @@ function drawSheet() {
     body = `<h3>Edit Leg ${st.leg}</h3>
       <div class="hint">${esc(L.name || '')}</div>
       <div class="field"><label for="n-km">Official distance (km) · used for every ETA</label><input id="n-km" type="number" step="0.01" min="0.5" max="40" inputmode="decimal" data-sf="km" value="${esc(st.km)}"></div>
+      <div class="field"><label for="n-url">Strava route link</label><input id="n-url" type="url" inputmode="url" data-sf="url" placeholder="https://www.strava.com/routes/…" value="${esc(st.url || '')}"></div>
       <div class="field"><label for="n-text">Team note · everyone sees this on the leg</label>
       <textarea class="note" id="n-text" data-sf="text" placeholder="e.g. Bring a headlamp. Watch the turn at Port Union Rd. Bike pacer needed.">${esc(st.text)}</textarea></div>
       <div class="acts">${L.teamNote ? '<button class="btn quiet" data-act="noteclear">Delete note</button>' : ''}<span style="flex:1"></span><button class="btn quiet" data-act="close">Cancel</button><button class="btn primary" data-act="confirm">Save</button></div>`;
@@ -1258,7 +1259,9 @@ async function confirmSheet() {
     const text = String(st.text || '').trim().slice(0, 1000);
     const km = Math.round(parseFloat(st.km) * 100) / 100;
     if (!(km >= 0.5 && km <= 40)) { toast('Enter a distance between 0.5 and 40 km.'); return; }
-    const patch = { teamNote: text }; if (km !== L.km) patch.km = km;
+    const url = String(st.url || '').trim();
+    if (url && !/^https:\/\//.test(url)) { toast('The route link should start with https://'); return; }
+    const patch = { teamNote: text }; if (km !== L.km) patch.km = km; if (url !== (L.routeUrl || '')) patch.routeUrl = url;
     closeSheet();
     await save(() => api.upd('legs', L.id, patch), patch.km ? `Leg ${L.n} is now ${km} km` : (text ? 'Note saved' : 'Note deleted'));
   } else if (st.kind === 'pin') {
@@ -1341,7 +1344,7 @@ document.addEventListener('click', async e => {
   if (act === 'mapme') return toggleMyLocation();
   if (act === 'relock') { lockEditing(); return toast('Locked. This device is view only.'); }
   if (!S.canEdit && EDIT_ACTS.has(act)) return openSheet({ kind: 'pin', pin: '', err: '' });
-  if (act === 'note') { const L = legOf(Number(v)); return openSheet({ kind: 'note', leg: Number(v), text: (L && L.teamNote) || '', km: L ? L.km : '' }); }
+  if (act === 'note') { const L = legOf(Number(v)); return openSheet({ kind: 'note', leg: Number(v), text: (L && L.teamNote) || '', km: L ? L.km : '', url: (L && L.routeUrl) || '' }); }
   if (act === 'noteclear') { sheetState.text = ''; return confirmSheet(); }
   if (act === 'scrim') { if (e.target === el) closeSheet(); return; }
   if (act === 'close') return closeSheet();
