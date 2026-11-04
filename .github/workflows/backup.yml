@@ -1,0 +1,37 @@
+name: Race data backup
+# Every 15 minutes, save a copy of the race data (legs, runners, runs, settings)
+# to the "backups" branch. Each save is a commit, so every past version is kept.
+# The website is published from "main" and is not affected.
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: race-backup
+  cancel-in-progress: false
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download race data
+        env:
+          URL: https://jxkxbevawuorbxlodsbl.supabase.co
+          KEY: sb_publishable_zjJZyUN2eLI0rZ6d1lcTRw_vyU-0n4j
+        run: |
+          curl -fsS --retry 3 "$URL/rest/v1/race_docs?select=collection,id,data,updated_at&order=collection,id&limit=10000" \
+            -H "apikey: $KEY" -H "Authorization: Bearer $KEY" -o race_docs.json
+          python3 -c "import json; d=json.load(open('race_docs.json')); assert isinstance(d, list) and len(d) > 0, 'empty'; print(len(d), 'rows')"
+      - name: Save to the backups branch
+        run: |
+          git init -q repo && cd repo
+          git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          if git fetch -q --depth 1 origin backups; then git checkout -q -b backups FETCH_HEAD; else git checkout -q --orphan backups; fi
+          mv ../race_docs.json race_docs.json
+          git config user.name "race-backup-bot"
+          git config user.email "race-backup-bot@users.noreply.github.com"
+          git add race_docs.json
+          if git diff --cached --quiet; then echo "No changes since the last backup."; exit 0; fi
+          git commit -q -m "Race data backup $(TZ=America/Toronto date '+%a %b %-d %-I:%M %p')"
+          git push -q origin backups
