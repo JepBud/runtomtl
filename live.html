@@ -726,7 +726,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
   .col { overflow-y: auto; }
   .sign-wrap.phone { display: none; }
 }
-@media (max-width: 899px) { .sign-wrap.wide { display: none; } .sign-wrap.phone { padding: 12px max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px)); } .sign .head { font-size: 38px; } .sign .kv b { font-size: 19px; } }
+@media (max-width: 899px) { .mapbox { height: 44vh; min-height: 260px; max-height: 440px; } .col { padding-bottom: 90px; } .sign-wrap.wide { display: none; } .sign-wrap.phone { padding: 12px max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px)); } .sign .head { font-size: 38px; } .sign .kv b { font-size: 19px; } }
 
 .leaflet-container { font-family: var(--body); background: var(--map-bg); }
 .leaflet-control-zoom a { background: var(--surface) !important; color: var(--ink) !important; border-color: var(--line) !important; }
@@ -736,6 +736,15 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .leaflet-tile-pane { filter: invert(1) hue-rotate(185deg) brightness(.82) contrast(.9) saturate(.6); } }
 :root[data-theme="dark"] .leaflet-tile-pane { filter: invert(1) hue-rotate(185deg) brightness(.82) contrast(.9) saturate(.6); }
 .mapbtns { position: absolute; z-index: 600; left: 10px; bottom: 10px; display: flex; gap: 6px; }
+/* Phone: a pill that points to the cards below the map, until the visitor starts scrolling. */
+.morebar { position: fixed; z-index: 1250; left: 50%; transform: translateX(-50%); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 18px; border-radius: 999px; border: 0; background: var(--ink); color: var(--bg); font-weight: 700; font-size: 15px; box-shadow: 0 6px 20px rgba(0,0,0,.28); white-space: nowrap; transition: opacity .25s, transform .25s; }
+.morebar svg { width: 18px; height: 18px; }
+.morebar.gone { opacity: 0; transform: translate(-50%, 16px); pointer-events: none; }
+@media (prefers-reduced-motion: no-preference) { .morebar:not(.gone) svg { animation: nudge 1.6s ease-in-out infinite; } }
+@keyframes nudge { 0%, 100% { transform: translateY(-2px); } 50% { transform: translateY(3px); } }
+@media (min-width: 900px) { .morebar { display: none; } }
+.touchhint { position: absolute; z-index: 600; right: 10px; bottom: 10px; font-size: 12px; color: var(--muted); background: color-mix(in srgb, var(--surface) 88%, transparent); border: 1px solid var(--line); border-radius: 8px; padding: 3px 8px; }
+@media (max-width: 899px) { .mapbtns { top: 10px; right: 10px; left: auto; bottom: auto; } .touchhint { top: 58px; bottom: auto; } .mapnote { top: auto; bottom: 10px; right: auto; left: 10px; } }
 .mbtn { min-height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font-weight: 700; font-size: 14px; }
 .mbtn[aria-pressed="true"] { background: var(--sign); color: var(--sign-ink); border-color: transparent; }
 .mapnote { position: absolute; z-index: 600; right: 10px; top: 10px; font-size: 12px; color: var(--muted); background: color-mix(in srgb, var(--surface) 88%, transparent); border: 1px solid var(--line); border-radius: 8px; padding: 3px 8px; }
@@ -802,6 +811,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
   <div class="mapbox">
     <div id="map"></div>
     <div class="mapnote" id="mapnote" hidden></div>
+    <div class="touchhint" id="touchhint" hidden>Pinch to zoom · swipe to scroll</div>
     <div class="mapbtns">
       <button class="mbtn" id="bFollow" aria-pressed="true">Follow team</button>
       <button class="mbtn" id="bAll" aria-pressed="false">Whole route</button>
@@ -809,7 +819,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
   </div>
   <div class="col">
     <div class="sign-wrap wide"><div class="sign" id="signW"></div></div>
-    <section class="card"><h2>Up next</h2><div class="list" id="next"></div></section>
+    <section class="card" id="cards"><h2>Up next</h2><div class="list" id="next"></div></section>
     <section class="card"><h2>Team on the map</h2><div class="list" id="pins"></div></section>
     <section class="card"><h2>Crews</h2><div class="crews" id="crews"></div></section>
     <section class="card"><h2>Legs done</h2><div class="list" id="done"></div><button class="more" id="moreDone" hidden>Show all</button></section>
@@ -817,6 +827,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
   </div>
 </div>
 
+<button class="morebar" id="morebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>Up next, crews and legs done</button>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0/dist/umd/supabase.js"></script>
@@ -1271,11 +1282,15 @@ function loadMock() {
 const MV = { map: null, lines: {}, est: null, estTag: null, pins: {}, follow: true, fitted: false };
 function initMap() {
   const L = window.L; if (!L) { $('#mapnote').hidden = false; $('#mapnote').textContent = 'The map could not load.'; return; }
-  MV.map = L.map('map', { zoomControl: true, attributionControl: true });
+  // On touch screens one finger scrolls the page and two fingers move or zoom the map, so the map never traps the scroll.
+  const touch = matchMedia('(pointer: coarse)').matches;
+  MV.map = L.map('map', { zoomControl: true, attributionControl: true, dragging: !touch, tap: false });
+  if (touch) { $('#touchhint').hidden = false; setTimeout(() => { $('#touchhint').hidden = true; }, 8000); }
   MV.map.setView([44.4, -76.5], 7);
   if (SITE) L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' }).addTo(MV.map);
   else { $('#mapnote').hidden = false; $('#mapnote').textContent = 'Preview: street map shows on the live site'; }
   MV.map.on('dragstart', () => setFollow(false));
+  document.getElementById('map').addEventListener('touchstart', e => { if (e.touches.length > 1) setFollow(false); }, { passive: true });
   // The layout settles after fonts and the sticky header load; resize the map to its final box.
   const fix = () => MV.map && MV.map.invalidateSize({ pan: false });
   window.addEventListener('resize', fix); window.addEventListener('load', fix); [100, 600, 1500].forEach(t => setTimeout(fix, t));
@@ -1399,6 +1414,10 @@ function render(pinsOnly) {
 }
 
 $('#moreDone').onclick = () => { doneAll = !doneAll; render(); };
+const moreBar = $('#morebar');
+const onScroll = () => moreBar.classList.toggle('gone', window.scrollY > 80);
+window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
+moreBar.onclick = () => { const el = $('#cards'); const y = el.getBoundingClientRect().top + window.scrollY - (document.querySelector('header.top').offsetHeight + 8); window.scrollTo({ top: y, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); };
 $('#bFollow').onclick = () => { setFollow(true); render(); };
 $('#bAll').onclick = () => { setFollow(false); $('#bAll').setAttribute('aria-pressed', 'true'); const all = S.legs.flatMap(l => S.routes[l.n] || []); if (all.length && MV.map) MV.map.fitBounds(window.L.latLngBounds(all), { padding: [20, 20] }); };
 initMap();
