@@ -1,0 +1,1509 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#55288a">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2355288a'/%3E%3Cpath d='M14 46 L30 18 L38 32 L44 24 L52 46 Z' fill='%23fff'/%3E%3C/svg%3E">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,-apple-system,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>SOB2MTL Bike Nav</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* required styles */
+
+.leaflet-pane,
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-tile-container,
+.leaflet-pane > svg,
+.leaflet-pane > canvas,
+.leaflet-zoom-box,
+.leaflet-image-layer,
+.leaflet-layer {
+	position: absolute;
+	left: 0;
+	top: 0;
+	}
+.leaflet-container {
+	overflow: hidden;
+	}
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+	-webkit-user-select: none;
+	   -moz-user-select: none;
+	        user-select: none;
+	  -webkit-user-drag: none;
+	}
+/* Prevents IE11 from highlighting tiles in blue */
+.leaflet-tile::selection {
+	background: transparent;
+}
+/* Safari renders non-retina tile on retina better with this, but Chrome is worse */
+.leaflet-safari .leaflet-tile {
+	image-rendering: -webkit-optimize-contrast;
+	}
+/* hack that prevents hw layers "stretching" when loading new tiles */
+.leaflet-safari .leaflet-tile-container {
+	width: 1600px;
+	height: 1600px;
+	-webkit-transform-origin: 0 0;
+	}
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+	display: block;
+	}
+/* .leaflet-container svg: reset svg max-width decleration shipped in Joomla! (joomla.org) 3.x */
+/* .leaflet-container img: map is broken in FF if you have max-width: 100% on tiles */
+.leaflet-container .leaflet-overlay-pane svg {
+	max-width: none !important;
+	max-height: none !important;
+	}
+.leaflet-container .leaflet-marker-pane img,
+.leaflet-container .leaflet-shadow-pane img,
+.leaflet-container .leaflet-tile-pane img,
+.leaflet-container img.leaflet-image-layer,
+.leaflet-container .leaflet-tile {
+	max-width: none !important;
+	max-height: none !important;
+	width: auto;
+	padding: 0;
+	}
+
+.leaflet-container img.leaflet-tile {
+	/* See: https://bugs.chromium.org/p/chromium/issues/detail?id=600120 */
+	mix-blend-mode: plus-lighter;
+}
+
+.leaflet-container.leaflet-touch-zoom {
+	-ms-touch-action: pan-x pan-y;
+	touch-action: pan-x pan-y;
+	}
+.leaflet-container.leaflet-touch-drag {
+	-ms-touch-action: pinch-zoom;
+	/* Fallback for FF which doesn't support pinch-zoom */
+	touch-action: none;
+	touch-action: pinch-zoom;
+}
+.leaflet-container.leaflet-touch-drag.leaflet-touch-zoom {
+	-ms-touch-action: none;
+	touch-action: none;
+}
+.leaflet-container {
+	-webkit-tap-highlight-color: transparent;
+}
+.leaflet-container a {
+	-webkit-tap-highlight-color: rgba(51, 181, 229, 0.4);
+}
+.leaflet-tile {
+	filter: inherit;
+	visibility: hidden;
+	}
+.leaflet-tile-loaded {
+	visibility: inherit;
+	}
+.leaflet-zoom-box {
+	width: 0;
+	height: 0;
+	-moz-box-sizing: border-box;
+	     box-sizing: border-box;
+	z-index: 800;
+	}
+/* workaround for https://bugzilla.mozilla.org/show_bug.cgi?id=888319 */
+.leaflet-overlay-pane svg {
+	-moz-user-select: none;
+	}
+
+.leaflet-pane         { z-index: 400; }
+
+.leaflet-tile-pane    { z-index: 200; }
+.leaflet-overlay-pane { z-index: 400; }
+.leaflet-shadow-pane  { z-index: 500; }
+.leaflet-marker-pane  { z-index: 600; }
+.leaflet-tooltip-pane   { z-index: 650; }
+.leaflet-popup-pane   { z-index: 700; }
+
+.leaflet-map-pane canvas { z-index: 100; }
+.leaflet-map-pane svg    { z-index: 200; }
+
+.leaflet-vml-shape {
+	width: 1px;
+	height: 1px;
+	}
+.lvml {
+	behavior: none;
+	display: inline-block;
+	position: absolute;
+	}
+
+
+/* control positioning */
+
+.leaflet-control {
+	position: relative;
+	z-index: 800;
+	pointer-events: visiblePainted; /* IE 9-10 doesn't have auto */
+	pointer-events: auto;
+	}
+.leaflet-top,
+.leaflet-bottom {
+	position: absolute;
+	z-index: 1000;
+	pointer-events: none;
+	}
+.leaflet-top {
+	top: 0;
+	}
+.leaflet-right {
+	right: 0;
+	}
+.leaflet-bottom {
+	bottom: 0;
+	}
+.leaflet-left {
+	left: 0;
+	}
+.leaflet-control {
+	float: left;
+	clear: both;
+	}
+.leaflet-right .leaflet-control {
+	float: right;
+	}
+.leaflet-top .leaflet-control {
+	margin-top: 10px;
+	}
+.leaflet-bottom .leaflet-control {
+	margin-bottom: 10px;
+	}
+.leaflet-left .leaflet-control {
+	margin-left: 10px;
+	}
+.leaflet-right .leaflet-control {
+	margin-right: 10px;
+	}
+
+
+/* zoom and fade animations */
+
+.leaflet-fade-anim .leaflet-popup {
+	opacity: 0;
+	-webkit-transition: opacity 0.2s linear;
+	   -moz-transition: opacity 0.2s linear;
+	        transition: opacity 0.2s linear;
+	}
+.leaflet-fade-anim .leaflet-map-pane .leaflet-popup {
+	opacity: 1;
+	}
+.leaflet-zoom-animated {
+	-webkit-transform-origin: 0 0;
+	    -ms-transform-origin: 0 0;
+	        transform-origin: 0 0;
+	}
+svg.leaflet-zoom-animated {
+	will-change: transform;
+}
+
+.leaflet-zoom-anim .leaflet-zoom-animated {
+	-webkit-transition: -webkit-transform 0.25s cubic-bezier(0,0,0.25,1);
+	   -moz-transition:    -moz-transform 0.25s cubic-bezier(0,0,0.25,1);
+	        transition:         transform 0.25s cubic-bezier(0,0,0.25,1);
+	}
+.leaflet-zoom-anim .leaflet-tile,
+.leaflet-pan-anim .leaflet-tile {
+	-webkit-transition: none;
+	   -moz-transition: none;
+	        transition: none;
+	}
+
+.leaflet-zoom-anim .leaflet-zoom-hide {
+	visibility: hidden;
+	}
+
+
+/* cursors */
+
+.leaflet-interactive {
+	cursor: pointer;
+	}
+.leaflet-grab {
+	cursor: -webkit-grab;
+	cursor:    -moz-grab;
+	cursor:         grab;
+	}
+.leaflet-crosshair,
+.leaflet-crosshair .leaflet-interactive {
+	cursor: crosshair;
+	}
+.leaflet-popup-pane,
+.leaflet-control {
+	cursor: auto;
+	}
+.leaflet-dragging .leaflet-grab,
+.leaflet-dragging .leaflet-grab .leaflet-interactive,
+.leaflet-dragging .leaflet-marker-draggable {
+	cursor: move;
+	cursor: -webkit-grabbing;
+	cursor:    -moz-grabbing;
+	cursor:         grabbing;
+	}
+
+/* marker & overlays interactivity */
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-image-layer,
+.leaflet-pane > svg path,
+.leaflet-tile-container {
+	pointer-events: none;
+	}
+
+.leaflet-marker-icon.leaflet-interactive,
+.leaflet-image-layer.leaflet-interactive,
+.leaflet-pane > svg path.leaflet-interactive,
+svg.leaflet-image-layer.leaflet-interactive path {
+	pointer-events: visiblePainted; /* IE 9-10 doesn't have auto */
+	pointer-events: auto;
+	}
+
+/* visual tweaks */
+
+.leaflet-container {
+	background: #ddd;
+	outline-offset: 1px;
+	}
+.leaflet-container a {
+	color: #0078A8;
+	}
+.leaflet-zoom-box {
+	border: 2px dotted #38f;
+	background: rgba(255,255,255,0.5);
+	}
+
+
+/* general typography */
+.leaflet-container {
+	font-family: "Helvetica Neue", Arial, Helvetica, sans-serif;
+	font-size: 12px;
+	font-size: 0.75rem;
+	line-height: 1.5;
+	}
+
+
+/* general toolbar styles */
+
+.leaflet-bar {
+	box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+	border-radius: 4px;
+	}
+.leaflet-bar a {
+	background-color: #fff;
+	border-bottom: 1px solid #ccc;
+	width: 26px;
+	height: 26px;
+	line-height: 26px;
+	display: block;
+	text-align: center;
+	text-decoration: none;
+	color: black;
+	}
+.leaflet-bar a,
+.leaflet-control-layers-toggle {
+	background-position: 50% 50%;
+	background-repeat: no-repeat;
+	display: block;
+	}
+.leaflet-bar a:hover,
+.leaflet-bar a:focus {
+	background-color: #f4f4f4;
+	}
+.leaflet-bar a:first-child {
+	border-top-left-radius: 4px;
+	border-top-right-radius: 4px;
+	}
+.leaflet-bar a:last-child {
+	border-bottom-left-radius: 4px;
+	border-bottom-right-radius: 4px;
+	border-bottom: none;
+	}
+.leaflet-bar a.leaflet-disabled {
+	cursor: default;
+	background-color: #f4f4f4;
+	color: #bbb;
+	}
+
+.leaflet-touch .leaflet-bar a {
+	width: 30px;
+	height: 30px;
+	line-height: 30px;
+	}
+.leaflet-touch .leaflet-bar a:first-child {
+	border-top-left-radius: 2px;
+	border-top-right-radius: 2px;
+	}
+.leaflet-touch .leaflet-bar a:last-child {
+	border-bottom-left-radius: 2px;
+	border-bottom-right-radius: 2px;
+	}
+
+/* zoom control */
+
+.leaflet-control-zoom-in,
+.leaflet-control-zoom-out {
+	font: bold 18px 'Lucida Console', Monaco, monospace;
+	text-indent: 1px;
+	}
+
+.leaflet-touch .leaflet-control-zoom-in, .leaflet-touch .leaflet-control-zoom-out  {
+	font-size: 22px;
+	}
+
+
+/* layers control */
+
+.leaflet-control-layers {
+	box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+	background: #fff;
+	border-radius: 5px;
+	}
+.leaflet-control-layers-toggle {
+	background-image: none;
+	width: 36px;
+	height: 36px;
+	}
+.leaflet-retina .leaflet-control-layers-toggle {
+	background-image: none;
+	background-size: 26px 26px;
+	}
+.leaflet-touch .leaflet-control-layers-toggle {
+	width: 44px;
+	height: 44px;
+	}
+.leaflet-control-layers .leaflet-control-layers-list,
+.leaflet-control-layers-expanded .leaflet-control-layers-toggle {
+	display: none;
+	}
+.leaflet-control-layers-expanded .leaflet-control-layers-list {
+	display: block;
+	position: relative;
+	}
+.leaflet-control-layers-expanded {
+	padding: 6px 10px 6px 6px;
+	color: #333;
+	background: #fff;
+	}
+.leaflet-control-layers-scrollbar {
+	overflow-y: scroll;
+	overflow-x: hidden;
+	padding-right: 5px;
+	}
+.leaflet-control-layers-selector {
+	margin-top: 2px;
+	position: relative;
+	top: 1px;
+	}
+.leaflet-control-layers label {
+	display: block;
+	font-size: 13px;
+	font-size: 1.08333em;
+	}
+.leaflet-control-layers-separator {
+	height: 0;
+	border-top: 1px solid #ddd;
+	margin: 5px -10px 5px -6px;
+	}
+
+/* Default icon URLs */
+.leaflet-default-icon-path { /* used only in path-guessing heuristic, see L.Icon.Default */
+	background-image: none;
+	}
+
+
+/* attribution and scale controls */
+
+.leaflet-container .leaflet-control-attribution {
+	background: #fff;
+	background: rgba(255, 255, 255, 0.8);
+	margin: 0;
+	}
+.leaflet-control-attribution,
+.leaflet-control-scale-line {
+	padding: 0 5px;
+	color: #333;
+	line-height: 1.4;
+	}
+.leaflet-control-attribution a {
+	text-decoration: none;
+	}
+.leaflet-control-attribution a:hover,
+.leaflet-control-attribution a:focus {
+	text-decoration: underline;
+	}
+.leaflet-attribution-flag {
+	display: inline !important;
+	vertical-align: baseline !important;
+	width: 1em;
+	height: 0.6669em;
+	}
+.leaflet-left .leaflet-control-scale {
+	margin-left: 5px;
+	}
+.leaflet-bottom .leaflet-control-scale {
+	margin-bottom: 5px;
+	}
+.leaflet-control-scale-line {
+	border: 2px solid #777;
+	border-top: none;
+	line-height: 1.1;
+	padding: 2px 5px 1px;
+	white-space: nowrap;
+	-moz-box-sizing: border-box;
+	     box-sizing: border-box;
+	background: rgba(255, 255, 255, 0.8);
+	text-shadow: 1px 1px #fff;
+	}
+.leaflet-control-scale-line:not(:first-child) {
+	border-top: 2px solid #777;
+	border-bottom: none;
+	margin-top: -2px;
+	}
+.leaflet-control-scale-line:not(:first-child):not(:last-child) {
+	border-bottom: 2px solid #777;
+	}
+
+.leaflet-touch .leaflet-control-attribution,
+.leaflet-touch .leaflet-control-layers,
+.leaflet-touch .leaflet-bar {
+	box-shadow: none;
+	}
+.leaflet-touch .leaflet-control-layers,
+.leaflet-touch .leaflet-bar {
+	border: 2px solid rgba(0,0,0,0.2);
+	background-clip: padding-box;
+	}
+
+
+/* popup */
+
+.leaflet-popup {
+	position: absolute;
+	text-align: center;
+	margin-bottom: 20px;
+	}
+.leaflet-popup-content-wrapper {
+	padding: 1px;
+	text-align: left;
+	border-radius: 12px;
+	}
+.leaflet-popup-content {
+	margin: 13px 24px 13px 20px;
+	line-height: 1.3;
+	font-size: 13px;
+	font-size: 1.08333em;
+	min-height: 1px;
+	}
+.leaflet-popup-content p {
+	margin: 17px 0;
+	margin: 1.3em 0;
+	}
+.leaflet-popup-tip-container {
+	width: 40px;
+	height: 20px;
+	position: absolute;
+	left: 50%;
+	margin-top: -1px;
+	margin-left: -20px;
+	overflow: hidden;
+	pointer-events: none;
+	}
+.leaflet-popup-tip {
+	width: 17px;
+	height: 17px;
+	padding: 1px;
+
+	margin: -10px auto 0;
+	pointer-events: auto;
+
+	-webkit-transform: rotate(45deg);
+	   -moz-transform: rotate(45deg);
+	    -ms-transform: rotate(45deg);
+	        transform: rotate(45deg);
+	}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+	background: white;
+	color: #333;
+	box-shadow: 0 3px 14px rgba(0,0,0,0.4);
+	}
+.leaflet-container a.leaflet-popup-close-button {
+	position: absolute;
+	top: 0;
+	right: 0;
+	border: none;
+	text-align: center;
+	width: 24px;
+	height: 24px;
+	font: 16px/24px Tahoma, Verdana, sans-serif;
+	color: #757575;
+	text-decoration: none;
+	background: transparent;
+	}
+.leaflet-container a.leaflet-popup-close-button:hover,
+.leaflet-container a.leaflet-popup-close-button:focus {
+	color: #585858;
+	}
+.leaflet-popup-scrolled {
+	overflow: auto;
+	}
+
+.leaflet-oldie .leaflet-popup-content-wrapper {
+	-ms-zoom: 1;
+	}
+.leaflet-oldie .leaflet-popup-tip {
+	width: 24px;
+	margin: 0 auto;
+
+	-ms-filter: "progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678)";
+	filter: progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678);
+	}
+
+.leaflet-oldie .leaflet-control-zoom,
+.leaflet-oldie .leaflet-control-layers,
+.leaflet-oldie .leaflet-popup-content-wrapper,
+.leaflet-oldie .leaflet-popup-tip {
+	border: 1px solid #999;
+	}
+
+
+/* div icon */
+
+.leaflet-div-icon {
+	background: #fff;
+	border: 1px solid #666;
+	}
+
+
+/* Tooltip */
+/* Base styles for the element that has a tooltip */
+.leaflet-tooltip {
+	position: absolute;
+	padding: 6px;
+	background-color: #fff;
+	border: 1px solid #fff;
+	border-radius: 3px;
+	color: #222;
+	white-space: nowrap;
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+	pointer-events: none;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+	}
+.leaflet-tooltip.leaflet-interactive {
+	cursor: pointer;
+	pointer-events: auto;
+	}
+.leaflet-tooltip-top:before,
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before {
+	position: absolute;
+	pointer-events: none;
+	border: 6px solid transparent;
+	background: transparent;
+	content: "";
+	}
+
+/* Directions */
+
+.leaflet-tooltip-bottom {
+	margin-top: 6px;
+}
+.leaflet-tooltip-top {
+	margin-top: -6px;
+}
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-top:before {
+	left: 50%;
+	margin-left: -6px;
+	}
+.leaflet-tooltip-top:before {
+	bottom: 0;
+	margin-bottom: -12px;
+	border-top-color: #fff;
+	}
+.leaflet-tooltip-bottom:before {
+	top: 0;
+	margin-top: -12px;
+	margin-left: -6px;
+	border-bottom-color: #fff;
+	}
+.leaflet-tooltip-left {
+	margin-left: -6px;
+}
+.leaflet-tooltip-right {
+	margin-left: 6px;
+}
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before {
+	top: 50%;
+	margin-top: -6px;
+	}
+.leaflet-tooltip-left:before {
+	right: 0;
+	margin-right: -12px;
+	border-left-color: #fff;
+	}
+.leaflet-tooltip-right:before {
+	left: 0;
+	margin-left: -12px;
+	border-right-color: #fff;
+	}
+
+/* Printing */
+
+@media print {
+	/* Prevent printers from removing background-images of controls. */
+	.leaflet-control {
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
+		}
+	}
+
+</style>
+<style>
+/* Layout: one screen for a handlebar-mounted phone. Leg bar on top, a big highway-sign cue panel,
+   the map filling the middle, and a stats strip with large buttons at the bottom. */
+:root {
+  --bg: #f3f0f7; --surface: #ffffff; --surface-2: #f8f6fb; --ink: #1a1320; --muted: #665b72; --line: #ddd4e8;
+  --sign: #55288a; --sign-2: #3f1d68; --sign-ink: #ffffff; --sign-dim: #e3cff7; --accent: #6b34a8;
+  --ok: #1d8a4b; --warn: #a96d00; --warn-bg: #fff3d9; --bad: #c03a2b; --bad-2: #9a2a1e; --bad-ink: #ffffff;
+  --route: #6b34a8; --route-done: #b9a6d3; --route-other: #cbbfd9; --me: #1b6fd8; --cue: #d98a00; --map-bg: #ebe6f1;
+  --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0a080d; --surface: #141018; --surface-2: #1a1520; --ink: #efe9f5; --muted: #9d92aa; --line: #2a2332;
+  --sign: #24123a; --sign-2: #1a0d2b; --sign-ink: #f7f1fd; --sign-dim: #d8b8f8; --accent: #c898e8;
+  --ok: #45c07c; --warn: #e5a630; --warn-bg: #33270d; --bad: #b8382a; --bad-2: #7c2219; --bad-ink: #fff3f1;
+  --route: #c898e8; --route-done: #5a4a6e; --route-other: #3a3046; --me: #5aa8ff; --cue: #f2b53a; --map-bg: #17131c;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0a080d; --surface: #141018; --surface-2: #1a1520; --ink: #efe9f5; --muted: #9d92aa; --line: #2a2332;
+  --sign: #24123a; --sign-2: #1a0d2b; --sign-ink: #f7f1fd; --sign-dim: #d8b8f8; --accent: #c898e8;
+  --ok: #45c07c; --warn: #e5a630; --warn-bg: #33270d; --bad: #b8382a; --bad-2: #7c2219; --bad-ink: #fff3f1;
+  --route: #c898e8; --route-done: #5a4a6e; --route-other: #3a3046; --me: #5aa8ff; --cue: #f2b53a; --map-bg: #17131c;
+  color-scheme: dark; }
+html, body { height: 100%; background: var(--bg); color: var(--ink); }
+body { font-family: var(--body); font-size: 15px; line-height: 1.4; -webkit-font-smoothing: antialiased; overflow: hidden; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums; }
+
+.app { height: 100%; display: flex; flex-direction: column; }
+.gut { padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); }
+
+/* Leg bar */
+.legbar { display: flex; align-items: center; gap: 8px; padding-block: 8px; background: var(--bg); border-bottom: 1px solid var(--line); }
+.legbar .who { flex: 1; min-width: 0; }
+.legbar .who b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: var(--display); font-weight: 700; font-size: 24px; line-height: 1; letter-spacing: .01em; }
+.legbar .who span { display: block; font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chip { font-family: var(--display); font-weight: 700; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); background: var(--surface); white-space: nowrap; }
+.chip.live { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent); }
+.chip.pin { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, transparent); }
+.ibtn { width: 48px; height: 48px; flex: none; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; font-size: 22px; line-height: 1; }
+.ibtn svg { width: 22px; height: 22px; }
+.ibtn[aria-pressed="true"] { background: var(--sign); color: var(--sign-ink); border-color: var(--sign-2); }
+
+/* Cue sign */
+.sign { margin: 8px max(12px, env(safe-area-inset-right, 0px)) 0 max(12px, env(safe-area-inset-left, 0px)); background: var(--sign); color: var(--sign-ink); border: 2px solid var(--sign-2); border-radius: 14px; padding: 10px 14px; display: grid; grid-template-columns: 76px 1fr; gap: 12px; align-items: center; min-height: 104px; }
+.sign .arrow { width: 76px; height: 76px; }
+.sign .arrow svg { width: 100%; height: 100%; display: block; }
+.sign .dist { font-family: var(--display); font-weight: 700; font-size: 52px; line-height: .95; letter-spacing: -.01em; }
+.sign .what { font-family: var(--display); font-weight: 600; font-size: 24px; line-height: 1.05; color: var(--sign-dim); }
+.sign .then { font-size: 13px; color: var(--sign-dim); margin-top: 3px; }
+.sign.off { background: var(--bad); border-color: var(--bad-2); color: var(--bad-ink); }
+.sign.off .what, .sign.off .then { color: var(--bad-ink); }
+.sign.idle .dist { font-size: 34px; }
+@media (prefers-reduced-motion: no-preference) { .sign.off { animation: flash 1s steps(2) infinite; } }
+@keyframes flash { 50% { background: var(--bad-2); } }
+
+/* Map */
+.mapwrap { position: relative; flex: 1; min-height: 0; margin-top: 8px; }
+#map { position: absolute; inset: 0; background: var(--map-bg); }
+.leaflet-container { font-family: var(--body); background: var(--map-bg); }
+.leaflet-control-attribution { background: color-mix(in srgb, var(--surface) 80%, transparent) !important; color: var(--muted) !important; font-size: 10px; }
+.leaflet-control-attribution a { color: var(--muted) !important; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .leaflet-tile-pane { filter: invert(1) hue-rotate(185deg) brightness(.8) contrast(.9) saturate(.6); } }
+:root[data-theme="dark"] .leaflet-tile-pane { filter: invert(1) hue-rotate(185deg) brightness(.8) contrast(.9) saturate(.6); }
+.mapnote { position: absolute; left: 10px; top: 10px; z-index: 500; font-size: 12px; color: var(--muted); background: color-mix(in srgb, var(--surface) 88%, transparent); border: 1px solid var(--line); border-radius: 8px; padding: 3px 8px; max-width: calc(100% - 80px); }
+.recenter { position: absolute; right: max(10px, env(safe-area-inset-right, 0px)); bottom: 10px; z-index: 500; }
+.me-dot { width: 22px; height: 22px; border-radius: 50%; background: var(--me); border: 4px solid var(--surface); box-shadow: 0 0 0 2px var(--me), 0 2px 8px rgba(0,0,0,.3); }
+.cue-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--cue); border: 3px solid var(--surface); }
+.flag { font-family: var(--display); font-weight: 700; font-size: 13px; letter-spacing: .05em; text-transform: uppercase; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; white-space: nowrap; display: inline-block; box-shadow: 0 1px 4px rgba(0,0,0,.18); }
+
+/* Bottom strip */
+.foot { padding-block: 8px max(8px, env(safe-area-inset-bottom, 0px)); background: var(--bg); border-top: 1px solid var(--line); display: grid; gap: 8px; }
+.stats { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: end; }
+.stats .big { font-family: var(--display); font-weight: 700; font-size: 30px; line-height: 1; }
+.stats .big small { font-size: 16px; font-weight: 600; color: var(--muted); margin-left: 4px; }
+.stats .side { text-align: right; font-size: 13px; color: var(--muted); }
+.bar { grid-column: 1 / -1; height: 8px; border-radius: 99px; background: var(--surface-2); border: 1px solid var(--line); overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--route); border-radius: 99px; }
+.btns { display: flex; gap: 8px; }
+.btn { flex: 1; min-height: 52px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); font-family: var(--display); font-weight: 700; font-size: 20px; letter-spacing: .02em; }
+.btn.primary { background: var(--sign); border-color: var(--sign-2); color: var(--sign-ink); }
+
+/* Start overlay and drawer */
+.overlay { position: fixed; inset: 0; z-index: 2100; background: color-mix(in srgb, var(--bg) 92%, transparent); display: grid; place-items: center; padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.card { width: min(440px, 100%); background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: grid; gap: 12px; }
+.card h1 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 32px; line-height: 1; text-wrap: balance; }
+.card p { margin: 0; color: var(--muted); }
+.card ul { margin: 0; padding-left: 18px; color: var(--muted); display: grid; gap: 4px; }
+.card .btn { width: 100%; flex: none; }
+.drawer { position: fixed; left: 0; right: 0; bottom: 0; z-index: 2000; max-height: 78%; overflow: auto; background: var(--surface); border-top: 1px solid var(--line); border-radius: 16px 16px 0 0; box-shadow: 0 -8px 30px rgba(0,0,0,.25); padding-block: 14px max(16px, env(safe-area-inset-bottom, 0px)); }
+.drawer .in { max-width: 640px; margin: 0 auto; display: grid; gap: 14px; }
+.drawer h2 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 26px; line-height: 1.05; }
+.drawer h3 { margin: 0 0 6px; font-family: var(--display); font-weight: 700; font-size: 15px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.drawer .meta { color: var(--muted); }
+.drawer ol, .drawer ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.links { display: flex; flex-wrap: wrap; gap: 8px; }
+.links a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); text-decoration: none; font-weight: 700; }
+.upd { background: var(--warn-bg); border-radius: 8px; padding: 6px 8px; font-size: 14px; }
+.cuelist { list-style: none; padding: 0 !important; }
+.cuelist button { width: 100%; text-align: left; display: grid; grid-template-columns: 64px 28px 1fr; gap: 8px; align-items: center; min-height: 40px; background: none; border: 0; border-bottom: 1px solid var(--line); padding: 4px 0; }
+.cuelist .km { font-variant-numeric: tabular-nums; color: var(--muted); }
+.cuelist svg { width: 24px; height: 24px; }
+.cuelist .past { opacity: .45; }
+.close { justify-self: end; }
+.toast { position: fixed; left: 50%; bottom: calc(150px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 2200; background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 10px; font-weight: 700; max-width: calc(100% - 32px); }
+</style>
+</head>
+<body>
+
+
+<div class="app">
+  <div class="legbar gut">
+    <button class="ibtn" id="prev" aria-label="Previous leg">‹</button>
+    <div class="who"><b id="legTitle">Leg –</b><span id="legSub">Loading the race…</span></div>
+    <span class="chip" id="mode">…</span>
+    <button class="ibtn" id="next" aria-label="Next leg">›</button>
+  </div>
+  <div class="sign idle" id="sign" role="status" aria-live="polite">
+    <div class="arrow" id="arrow"></div>
+    <div><div class="dist num" id="cueDist">Ready</div><div class="what" id="cueWhat">Tap Start to begin</div><div class="then" id="cueThen"></div></div>
+  </div>
+  <div class="mapwrap">
+    <div id="map"></div>
+    <div class="mapnote" id="mapnote" hidden></div>
+    <button class="ibtn recenter" id="recenter" aria-label="Follow my position" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
+  </div>
+  <div class="foot gut">
+    <div class="stats">
+      <div class="big num" id="toEx">– <small>to exchange</small></div>
+      <div class="side num" id="side">–</div>
+      <div class="bar"><i id="prog"></i></div>
+    </div>
+    <div class="btns">
+      <button class="btn" id="info">Leg info</button>
+      <button class="ibtn" id="sound" aria-label="Sound alerts" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg></button>
+      <button class="ibtn" id="theme" aria-label="Switch light or dark">◐</button>
+      <button class="btn primary" id="startBtn">Start</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="startOv" hidden>
+  <div class="card">
+    <h1>Bike nav for the runner's leg</h1>
+    <p id="startP">Keeps the screen on, follows your GPS along the current leg and warns you when you leave the route.</p>
+    <ul>
+      <li>Mount the phone and keep it charging. GPS with the screen on uses a lot of battery.</li>
+      <li>The leg changes on its own when the runner hands off in the tracker.</li>
+      <li>Turn cues come from the route's shape, so they don't name streets. Leg info has the booklet directions.</li>
+    </ul>
+    <button class="btn primary" id="goGps">Start navigating</button>
+    <button class="btn" id="goSim">Practice ride (simulated)</button>
+    <button class="btn" id="goClose">Just look at the map</button>
+  </div>
+</div>
+
+<div class="drawer gut" id="drawer" hidden><div class="in" id="drawerIn"></div></div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.111.0/dist/umd/supabase.js"></script>
+
+<script>
+// RunToMTL tracker core: pure functions, no DOM. Times are epoch ms, paces are sec/km.
+const Core = (() => {
+  const BLOCK = 5;
+  const MIN = 60000;
+
+  function buildBlocks(nLegs, cfg) {
+    const lens = (cfg && cfg.blockLens) || {};
+    const groups = (cfg && cfg.blockGroups) || {};
+    const first = (cfg && cfg.firstGroup) || 'A';
+    const other = first === 'A' ? 'B' : 'A';
+    const out = [];
+    let leg = 1, i = 0;
+    while (leg <= nLegs) {
+      const want = lens[i] != null ? Number(lens[i]) : BLOCK;
+      const len = Math.max(1, Math.min(BLOCK, want || BLOCK));
+      const end = Math.min(nLegs, leg + len - 1);
+      out.push({ i, start: leg, end, len: end - leg + 1, group: groups[i] || (i % 2 === 0 ? first : other) });
+      leg = end + 1; i++;
+    }
+    return out;
+  }
+  const blockOf = (blocks, n) => blocks.find(b => n >= b.start && n <= b.end) || null;
+
+  function runSec(r) {
+    if (r.movingSec) return Number(r.movingSec);
+    if (r.start && r.end) return (r.end - r.start) / 1000;
+    return 0;
+  }
+  const runKm = r => Number(r.actualKm) || Number(r.km) || 0;
+
+  function legRuns(runs) {
+    const m = {};
+    runs.forEach(r => { (m[r.leg] = m[r.leg] || []).push(r); });
+    Object.values(m).forEach(a => a.sort((x, y) => x.start - y.start));
+    return m;
+  }
+
+  const isBlock = r => r.kind === 'block';
+  const lastLegOf = r => isBlock(r) ? r.endLeg : r.leg;
+
+  function legStatus(legs, runs) {
+    const normal = runs.filter(r => !isBlock(r));
+    const byLeg = legRuns(normal);
+    const cov = {};
+    runs.filter(isBlock).forEach(r => { for (let n = r.leg; n <= r.endLeg; n++) cov[n] = r; });
+    const maxLeg = runs.reduce((a, r) => Math.max(a, lastLegOf(r)), 0);
+    const st = {};
+    legs.forEach(l => {
+      const rs = byLeg[l.n] || [];
+      const kmDone = rs.filter(r => r.end).reduce((a, r) => a + (Number(r.km) || 0), 0);
+      let s = 'upcoming', est = false;
+      if (rs.some(r => !r.end)) s = 'active';
+      else if (rs.some(r => r.legDone)) s = 'done';
+      else if (rs.length) s = 'partial';
+      else if (cov[l.n]) { s = cov[l.n].end ? 'done' : 'block'; est = true; }
+      else if (l.n < maxLeg) s = 'skipped';
+      st[l.n] = { s, est, runs: rs, kmDone, cover: cov[l.n] || null };
+    });
+    return st;
+  }
+
+  // Which leg should run next, from the run log alone.
+  function nextLeg(runs) {
+    if (!runs.length) return 1;
+    const last = runs.reduce((a, r) => (!a || (r.end || 0) > (a.end || 0) ? r : a), null);
+    return last.legDone ? lastLegOf(last) + 1 : lastLegOf(last);
+  }
+
+  function paceFor(id, d) {
+    const rr = d.runners.find(r => r.id === id);
+    const conf = (rr && Number(rr.paceSec)) || 300;
+    let sec = 0, km = 0, n = 0;
+    d.runs.forEach(r => {
+      if (r.runner !== id || !r.end) return;
+      const k = runKm(r), s = runSec(r);
+      if (k > 0.3 && s / k >= 150 && s / k <= 900) { sec += s; km += k; n++; }
+    });
+    let p = conf;
+    if (n === 1) p = (conf + sec / km) / 2;
+    else if (n > 1) p = sec / km;
+    return p * (1 + (Number(d.cfg.paceAdjPct) || 0) / 100);
+  }
+
+  function groupPace(group, d) {
+    const ps = d.runners.filter(r => r.group === group && r.active !== false).map(r => paceFor(r.id, d));
+    return ps.length ? ps.reduce((a, b) => a + b, 0) / ps.length : 300 * (1 + (Number(d.cfg.paceAdjPct) || 0) / 100);
+  }
+
+  function parseSailings(cfg) {
+    return String(cfg.ferrySailings || '').split(/[\s,;]+/).map(s => s.trim()).filter(s => /^\d{1,2}:\d{2}$/.test(s))
+      .map(s => { const [h, m] = s.split(':').map(Number); return h * 60 + m; }).sort((a, b) => a - b);
+  }
+
+  // When does the next leg start, given the team reaches the ferry dock at `arrival`?
+  function ferryAfter(arrival, cfg) {
+    const sail = parseSailings(cfg);
+    const board = (Number(cfg.ferryBoardMin) || 10) * MIN;
+    const cross = (Number(cfg.ferryCrossMin) || 20) * MIN;
+    if (!sail.length) {
+      return { arrival, depart: null, missed: null, start: arrival + (Number(cfg.ferryGapMin) || 21) * MIN, slackMin: null };
+    }
+    const day = new Date(arrival); day.setHours(0, 0, 0, 0);
+    const times = [];
+    for (let k = -1; k <= 1; k++) sail.forEach(m => times.push(day.getTime() + k * 1440 * MIN + m * MIN));
+    const ready = arrival + board;
+    const idx = times.findIndex(t => t >= ready);
+    const depart = times[idx];
+    const missed = idx > 0 ? times[idx - 1] : null;
+    return { arrival, depart, missed, start: depart + cross, slackMin: Math.round((depart - ready) / MIN) };
+  }
+
+  function suggestRunner(n, d, blocks, excludeId, extra) {
+    const plan = (d.cfg.plan || {})[n];
+    if (plan && plan !== excludeId) return plan;
+    const b = blockOf(blocks, n);
+    if (!b) return null;
+    const planAll = d.cfg.plan || {};
+    const crew = [];
+    for (let k = b.start; k <= b.end; k++) if (planAll[k] && !crew.includes(planAll[k])) crew.push(planAll[k]);
+    const act = r => r.active !== false && r.id !== excludeId;
+    let pool = d.runners.filter(r => act(r) && crew.includes(r.id));
+    if (!pool.length) pool = d.runners.filter(r => act(r) && r.group === b.group);
+    if (!pool.length) pool = d.runners.filter(act);
+    if (!pool.length) return null;
+    const count = id => d.runs.filter(r => r.runner === id && r.leg >= b.start && r.leg <= b.end).length + ((extra && extra[b.i + ':' + id]) || 0);
+    const order = d.runners.map(r => r.id);
+    pool.sort((x, y) => count(x.id) - count(y.id) || order.indexOf(x.id) - order.indexOf(y.id));
+    return pool[0].id;
+  }
+
+  // Projection of every leg: actual where tapped, estimated where not.
+  function project(d, now) {
+    const legs = d.legs, N = legs.length;
+    const blocks = buildBlocks(N, d.cfg);
+    const st = legStatus(legs, d.runs);
+    const ferryLeg = Number(d.cfg.ferryLeg) || 0;
+    const legOf = n => legs.find(l => l.n === n);
+    const proj = {};
+    const extra = {};
+    let ferry = null;
+
+    // Estimate legs from..to starting at time t; writes into `into`, returns the end time.
+    function fill(into, from, to, t, prevRunner, floorNow) {
+      for (let n = from; n <= to; n++) {
+        const pf = into[ferryLeg] || proj[ferryLeg];
+        if (n === ferryLeg + 1 && pf) {
+          const f = ferryAfter(pf.end, d.cfg);
+          if (into === proj) ferry = f;
+          t = Math.max(f.start, floorNow && n === from ? now : 0);
+        }
+        const l = legOf(n); if (!l) continue;
+        const s = st[n];
+        const km = Math.max(0, l.km - (s ? s.kmDone : 0));
+        const b = blockOf(blocks, n);
+        const who = suggestRunner(n, d, blocks, prevRunner, extra);
+        if (who && b) extra[b.i + ':' + who] = (extra[b.i + ':' + who] || 0) + 1;
+        const planned = (d.cfg.plan || {})[n] || null;
+        const pace = planned ? paceFor(planned, d) : groupPace(b ? b.group : 'A', d);
+        into[n] = { start: t, end: t + km * pace * 1000, est: true, runner: planned, suggested: who, pace };
+        prevRunner = who;
+        t = into[n].end;
+      }
+      return { t, prevRunner };
+    }
+
+    legs.forEach(l => {
+      const s = st[l.n];
+      if (s.s === 'done' && !s.est) proj[l.n] = { start: s.runs[0].start, end: Math.max(...s.runs.map(r => r.end)), actual: true };
+    });
+    // Finished estimate-mode blocks: spread their real elapsed time across the legs.
+    d.runs.filter(r => isBlock(r) && r.end).forEach(r => {
+      const tmp = {};
+      fill(tmp, r.leg, r.endLeg, r.start, null, false);
+      const raw = (tmp[r.endLeg] ? tmp[r.endLeg].end : r.end) - r.start;
+      const k = raw > 0 ? (r.end - r.start) / raw : 1;
+      for (let n = r.leg; n <= r.endLeg; n++) if (tmp[n] && st[n].s === 'done' && st[n].est) {
+        proj[n] = { ...tmp[n], start: r.start + (tmp[n].start - r.start) * k, end: r.start + (tmp[n].end - r.start) * k, actual: true, estimated: true };
+      }
+    });
+
+    const activeRun = d.runs.find(r => r.start && !r.end) || null;
+    let active = null, t, from, prevRunner = null;
+    if (activeRun && isBlock(activeRun)) {
+      const r = fill(proj, activeRun.leg, activeRun.endLeg, activeRun.start, null, false);
+      let cur = activeRun.endLeg;
+      for (let n = activeRun.leg; n <= activeRun.endLeg; n++) if (proj[n] && proj[n].end > now) { cur = n; break; }
+      const overdue = now > r.t;
+      if (overdue) proj[activeRun.endLeg].end = now;
+      for (let n = activeRun.leg; n <= activeRun.endLeg; n++) if (proj[n]) proj[n].blockRun = true;
+      active = { ...activeRun, block: true, curLeg: cur, overdue };
+      t = proj[activeRun.endLeg].end; from = activeRun.endLeg + 1; prevRunner = r.prevRunner;
+    } else if (activeRun) {
+      const l = legOf(activeRun.leg);
+      const rem = Math.max(0, (l ? l.km : 0) - st[activeRun.leg].kmDone);
+      let end = activeRun.start + rem * paceFor(activeRun.runner, d) * 1000;
+      const overdue = now > end;
+      if (overdue) end = now;
+      proj[activeRun.leg] = { start: st[activeRun.leg].runs[0].start, end, live: true, overdue, runner: activeRun.runner };
+      active = activeRun;
+      t = end; from = activeRun.leg + 1; prevRunner = activeRun.runner;
+    } else if (d.runs.length) {
+      const last = d.runs.reduce((a, r) => (!a || (r.end || 0) > (a.end || 0) ? r : a), null);
+      from = nextLeg(d.runs);
+      t = Math.max(last.end || now, now);
+    } else {
+      from = 1;
+      t = d.cfg.start && d.cfg.start > now ? d.cfg.start : now;
+    }
+    fill(proj, from, N, t, prevRunner, !activeRun);
+    if (!ferry && ferryLeg && proj[ferryLeg] && proj[ferryLeg + 1] && !proj[ferryLeg + 1].est) ferry = { arrival: proj[ferryLeg].end, done: true };
+    const finish = proj[N] ? proj[N].end : null;
+    return { blocks, st, proj, active, ferry, finish };
+  }
+
+  function fmtDur(sec) {
+    sec = Math.max(0, Math.round(sec));
+    const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+    return (h ? h + ':' + String(m).padStart(2, '0') : String(m)) + ':' + String(s).padStart(2, '0');
+  }
+  const fmtPace = p => (p > 0 && isFinite(p)) ? Math.floor(p / 60) + ':' + String(Math.round(p % 60)).padStart(2, '0') : '–';
+  function parsePace(s) {
+    const m = String(s).trim().match(/^(\d{1,2}):(\d{2})$/);
+    return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+  }
+
+  function summary(d) {
+    const legs = d.legs;
+    const done = d.runs.filter(r => r.end && !isBlock(r));
+    const est = d.runs.filter(r => r.end && isBlock(r));
+    const per = {};
+    d.runners.forEach(r => { per[r.id] = { id: r.id, name: r.name, group: r.group, runs: 0, legs: new Set(), km: 0, sec: 0, best: null }; });
+    done.forEach(r => {
+      const p = per[r.runner]; if (!p) return;
+      const k = runKm(r), s = runSec(r);
+      p.runs++; p.legs.add(r.leg); p.km += k; p.sec += s;
+      const q = per[r.partner]; if (q && r.partner !== r.runner) { q.runs++; q.legs.add(r.leg); q.km += k; q.sec += s; }
+      if (k > 2 && s > 0) { const pc = s / k; if (!p.best || pc < p.best.pace) p.best = { pace: pc, leg: r.leg }; }
+    });
+    const rows = Object.values(per).filter(p => p.runs).map(p => ({ ...p, legs: p.legs.size, pace: p.km ? p.sec / p.km : null }))
+      .sort((a, b) => b.km - a.km);
+    const legKm = n => { const l = legs.find(x => x.n === n); return l ? l.km : 0; };
+    let estKm = 0, estSec = 0;
+    est.forEach(r => { for (let n = r.leg; n <= r.endLeg; n++) estKm += legKm(n); estSec += (r.end - r.start) / 1000; });
+    const km = done.reduce((a, r) => a + runKm(r), 0) + estKm;
+    const sec = done.reduce((a, r) => a + runSec(r), 0) + estSec;
+    const first = d.runs.length ? Math.min(...d.runs.map(r => r.start)) : null;
+    const ended = d.runs.filter(r => r.end);
+    const last = ended.length ? Math.max(...ended.map(r => r.end)) : null;
+    const st = legStatus(legs, d.runs);
+    const skippedKm = legs.filter(l => st[l.n].s === 'skipped').reduce((a, l) => a + l.km, 0);
+    const legsDone = legs.filter(l => st[l.n].s === 'done').length;
+    const fl = Number(d.cfg.ferryLeg) || 0;
+    let toFerry = null;
+    if (fl && st[fl] && st[fl].s === 'done') {
+      const P = project(d, Date.now());
+      let fkm = done.filter(r => r.leg <= fl).reduce((a, r) => a + runKm(r), 0);
+      est.forEach(r => { for (let n = r.leg; n <= Math.min(fl, r.endLeg); n++) fkm += legKm(n); });
+      toFerry = { km: fkm, sec: (P.proj[fl].end - first) / 1000 };
+      toFerry.pace = toFerry.sec / toFerry.km;
+    }
+    return { rows, estKm, estSec, estBlocks: est.length, km, sec, pace: km ? sec / km : null, elapsed: first && last ? (last - first) / 1000 : 0, first, last, skippedKm, legsDone, toFerry };
+  }
+
+  return { isBlock, nextLeg, lastLegOf, buildBlocks, blockOf, legStatus, paceFor, groupPace, ferryAfter, parseSailings, suggestRunner, project, summary, fmtDur, fmtPace, parsePace, runKm, runSec };
+})();
+
+</script>
+<script>
+// RunToMTL navigation core: route geometry, turn cues and position-on-route. Pure functions, no DOM.
+const NavCore = (() => {
+  const R = 6371000, rad = Math.PI / 180;
+  // Local metres relative to a reference latitude (equirectangular; fine at leg scale).
+  const toXY = (p, lat0) => [p[1] * rad * R * Math.cos(lat0 * rad), p[0] * rad * R];
+  const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+
+  // Build a route object: points in metres, cumulative distance, and a resampled copy.
+  function makeRoute(path) {
+    const lat0 = path.length ? path[0][0] : 0;
+    const xy = path.map(p => toXY(p, lat0));
+    const cum = [0];
+    for (let i = 1; i < xy.length; i++) cum.push(cum[i - 1] + dist(xy[i - 1], xy[i]));
+    return { path, lat0, xy, cum, len: cum[cum.length - 1] || 0 };
+  }
+
+  // Point at distance s along the route (lat/lng and metres).
+  function pointAt(rt, s) {
+    const { cum, xy, path } = rt;
+    if (s <= 0) return { ll: path[0], xy: xy[0], i: 0 };
+    if (s >= rt.len) return { ll: path[path.length - 1], xy: xy[xy.length - 1], i: xy.length - 2 };
+    let lo = 0, hi = cum.length - 1;
+    while (hi - lo > 1) { const m = (lo + hi) >> 1; if (cum[m] <= s) lo = m; else hi = m; }
+    const seg = cum[hi] - cum[lo] || 1, f = (s - cum[lo]) / seg;
+    const a = path[lo], b = path[hi];
+    return { ll: [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f], xy: [xy[lo][0] + (xy[hi][0] - xy[lo][0]) * f, xy[lo][1] + (xy[hi][1] - xy[lo][1]) * f], i: lo };
+  }
+
+  const bearingXY = (a, b) => (Math.atan2(b[0] - a[0], b[1] - a[1]) / rad + 360) % 360; // 0 = north, clockwise
+  const turnDelta = (h1, h2) => ((h2 - h1 + 540) % 360) - 180; // + right, - left
+
+  // Turn cues from the route shape. Headings are measured over `win` metres before and after each
+  // sample, which smooths GPS wobble on recorded legs while keeping real corners.
+  function cues(rt, opt) {
+    const o = Object.assign({ step: 10, win: 40, min: 38, merge: 70, edge: 60 }, opt || {});
+    if (rt.len < o.win * 3) return [];
+    const S = [];
+    for (let s = 0; s <= rt.len; s += o.step) S.push(s);
+    const at = s => pointAt(rt, Math.max(0, Math.min(rt.len, s))).xy;
+    const d = S.map(s => {
+      if (s < o.win || s > rt.len - o.win) return 0;
+      const hin = bearingXY(at(s - o.win), at(s)), hout = bearingXY(at(s), at(s + o.win));
+      return turnDelta(hin, hout);
+    });
+    // Find runs where |delta| exceeds the threshold, keep the peak of each run.
+    const raw = [];
+    for (let i = 0; i < S.length; i++) {
+      if (Math.abs(d[i]) < o.min) continue;
+      let j = i, best = i;
+      while (j + 1 < S.length && Math.abs(d[j + 1]) >= o.min && Math.sign(d[j + 1]) === Math.sign(d[i])) { j++; if (Math.abs(d[j]) > Math.abs(d[best])) best = j; }
+      // Measure the whole turn across the run, so a corner taken in two steps reads as one turn.
+      const s0 = S[i], s1 = S[j];
+      const total = turnDelta(bearingXY(at(s0 - o.win), at(s0)), bearingXY(at(s1), at(s1 + o.win)));
+      raw.push({ s: S[best], ang: Math.abs(total) > Math.abs(d[best]) ? total : d[best] });
+      i = j;
+    }
+    // Drop cues hugging the start/finish (exchange shuffles), merge close same-direction cues,
+    // and cancel left-right pairs that undo each other within a short distance (GPS zig-zag).
+    // Cues closer together than `merge` metres form one cluster. A cluster becomes one cue with the
+    // net turn (so a zig-zag that cancels out disappears), or a "follow the map" cue when it is
+    // tangled (three or more bends, or turns back on itself) as recorded tracks sometimes are.
+    const out = raw.filter(c => c.s > o.edge && c.s < rt.len - o.edge);
+    const clusters = [];
+    out.forEach(c => {
+      const g = clusters[clusters.length - 1];
+      if (g && c.s - g[g.length - 1].s < o.merge) g.push(c); else clusters.push([c]);
+    });
+    const res = [];
+    clusters.forEach(g => {
+      const net = g.reduce((a, c) => a + c.ang, 0);
+      const peak = g.reduce((a, c) => (Math.abs(c.ang) > Math.abs(a.ang) ? c : a), g[0]);
+      const tangled = g.length >= 3 || Math.abs(net) > 200 || (g.length === 2 && Math.abs(g[0].ang) >= 150 && Math.abs(g[1].ang) >= 150);
+      if (tangled) { res.push({ s: g[0].s, ang: net, kind: 'check' }); return; }
+      if (Math.abs(net) < o.min) return;
+      res.push({ s: peak.s, ang: Math.max(-180, Math.min(180, net)), kind: kindOf(net) });
+    });
+    return res.map(c => ({ ...c, ll: pointAt(rt, c.s).ll }));
+  }
+  function kindOf(a) {
+    const m = Math.abs(a), side = a > 0 ? 'right' : 'left';
+    if (m >= 150) return 'u';
+    if (m >= 110) return 'sharp-' + side;
+    if (m >= 60) return side;
+    return 'slight-' + side;
+  }
+  const cueText = k => ({ check: 'Tricky bit: follow the map', u: 'U-turn', left: 'Turn left', right: 'Turn right', 'sharp-left': 'Sharp left', 'sharp-right': 'Sharp right', 'slight-left': 'Bear left', 'slight-right': 'Bear right' })[k] || 'Continue';
+
+  // Where is a GPS fix relative to the route? Searches near the last known position first so a
+  // route that doubles back on itself does not make the rider jump ahead.
+  function locate(rt, ll, lastS) {
+    const p = toXY(ll, rt.lat0);
+    const scan = (from, to) => {
+      let best = null;
+      for (let i = 0; i < rt.xy.length - 1; i++) {
+        if (rt.cum[i + 1] < from || rt.cum[i] > to) continue;
+        const a = rt.xy[i], b = rt.xy[i + 1], vx = b[0] - a[0], vy = b[1] - a[1], L2 = vx * vx + vy * vy || 1;
+        const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * vx + (p[1] - a[1]) * vy) / L2));
+        const q = [a[0] + vx * t, a[1] + vy * t], dd = dist(p, q);
+        if (!best || dd < best.off) best = { off: dd, s: rt.cum[i] + Math.sqrt(L2) * t, q };
+      }
+      return best;
+    };
+    let hit = lastS != null ? scan(lastS - 300, lastS + 2000) : null;
+    if (!hit || hit.off > 120) { const g = scan(-1, Infinity); if (g && (!hit || g.off < hit.off)) hit = g; }
+    if (!hit) return null;
+    // Bearing from the rider to the nearest point on the route, for the "back to route" arrow.
+    hit.toRoute = bearingXY(p, hit.q);
+    return hit;
+  }
+
+  return { makeRoute, pointAt, cues, cueText, locate, bearingXY, turnDelta, toXY };
+})();
+
+</script>
+<script>
+
+</script>
+<script>
+(() => {
+const SITE = !!window.RTM_CONFIG;
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmtD = m => m < 0 ? '0 m' : m < 950 ? (m < 100 ? Math.round(m / 5) * 5 : Math.round(m / 10) * 10) + ' m' : (m / 1000).toFixed(m < 9950 ? 1 : 0) + ' km';
+const hm = t => t ? new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+const COMPASS = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest'];
+const compass = b => COMPASS[Math.round(((b % 360) + 360) % 360 / 45) % 8];
+let toastT = null;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2600); }
+const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+
+// ---- race data --------------------------------------------------------------
+const S = { legs: [], runners: [], runs: [], cfg: {}, routes: {}, dirs: {}, ready: false, offline: false };
+const D = () => ({ legs: S.legs, runners: S.runners, runs: S.runs, cfg: S.cfg });
+const legOf = n => S.legs.find(l => l.n === n);
+const runnerName = id => { const r = S.runners.find(x => x.id === id); return r ? r.name : ''; };
+
+async function loadSite() {
+  const cfg = window.RTM_CONFIG;
+  const [routes, dirs] = await Promise.all([
+    fetch('routes.json').then(r => r.json()).catch(() => ({})),
+    fetch('directions.json').then(r => r.json()).catch(() => ({})),
+  ]);
+  S.routes = routes; S.dirs = dirs;
+  if (!window.supabase) { S.offline = true; return; }
+  const sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey, { auth: { persistSession: false } });
+  const pull = async () => {
+    try {
+      const { data, error } = await sb.from('race_docs').select('collection,id,data').limit(5000);
+      if (error) throw error;
+      const by = { legs: [], runners: [], runs: [] }; let c = {};
+      data.forEach(r => { if (r.collection === 'config') { if (r.id === 'race') c = r.data || {}; } else if (by[r.collection]) by[r.collection].push({ id: r.id, ...(r.data || {}) }); });
+      S.legs = by.legs.sort((a, b) => a.n - b.n); S.runners = by.runners; S.runs = by.runs; S.cfg = c; S.offline = false; S.ready = true;
+    } catch (e) { S.offline = true; }
+    onData();
+  };
+  let t = null; const soon = () => { clearTimeout(t); t = setTimeout(pull, 300); };
+  await pull();
+  try { sb.channel('rtm-nav').on('postgres_changes', { event: '*', schema: 'public', table: 'race_docs' }, soon).subscribe(); } catch (e) {}
+  setInterval(pull, 30000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) pull(); });
+}
+function loadMock() {
+  const M = window.NAV_DATA;
+  S.legs = M.legs; S.runners = M.runners; S.cfg = M.cfg; S.routes = M.routes; S.dirs = M.dirs;
+  // Example race state for the preview: Kofi set off on Leg 1 nine minutes ago.
+  const now = Date.now();
+  S.runs = [{ id: 'demo', leg: 1, runner: M.cfg.plan['1'], start: now - 9 * 60000 }];
+  S.ready = true; onData();
+}
+
+// ---- leg selection ----------------------------------------------------------
+const V = { leg: null, pinned: false, route: null, cues: [], s: null, off: 0, fix: null, acc: null, follow: true, nav: null, lastCue: null, offSince: 0, offAlerted: false, sound: true };
+function liveLeg() {
+  if (!S.legs.length) return null;
+  const P = Core.project(D(), Date.now());
+  const a = P.active;
+  if (a) return { n: a.block ? a.curLeg : a.leg, running: true, start: a.start };
+  const n = Core.nextLeg(S.runs); return { n: Math.min(n, S.legs.length), running: false, start: P.proj[n] && P.proj[n].start };
+}
+function onData() {
+  if (!S.ready) return;
+  const live = liveLeg();
+  if (!V.pinned && live && live.n !== V.leg) setLeg(live.n, false);
+  else if (V.leg == null && live) setLeg(live.n, false);
+  renderHeader();
+}
+function setLeg(n, pinned) {
+  const N = S.legs.length || 67; n = Math.max(1, Math.min(N, n));
+  if (pinned != null) V.pinned = pinned;
+  const live = liveLeg(); if (live && n === live.n && pinned) V.pinned = false;
+  V.leg = n; V.s = null; V.lastCue = null; V.offAlerted = false;
+  V.route = NavCore.makeRoute(S.routes[n] || []);
+  V.cues = V.route.len ? NavCore.cues(V.route) : [];
+  if (V.nav === 'sim') startSim();
+  drawLeg(); renderHeader(); update();
+}
+function renderHeader() {
+  const L = legOf(V.leg); const live = liveLeg();
+  $('#legTitle').textContent = 'Leg ' + (V.leg || '–');
+  const runner = runnerName((S.cfg.plan || {})[V.leg]);
+  const isLive = live && live.n === V.leg;
+  let sub = L ? (L.km ? L.km + ' km · ' : '') + L.name : '';
+  if (runner) sub = runner + ' · ' + sub;
+  if (isLive && !live.running && live.start) sub += ' · starts ~' + hm(live.start);
+  $('#legSub').textContent = sub || 'Loading the race…';
+  const m = $('#mode');
+  if (S.offline) { m.textContent = 'Offline'; m.className = 'chip pin'; }
+  else if (V.pinned) { m.textContent = 'Pinned'; m.className = 'chip pin'; }
+  else if (isLive && live.running) { m.textContent = 'Live'; m.className = 'chip live'; }
+  else { m.textContent = 'Next up'; m.className = 'chip'; }
+  m.title = V.pinned ? 'Tap to follow the live leg again' : '';
+}
+
+// ---- map --------------------------------------------------------------------
+const MV = { map: null, base: null, other: [], done: null, todo: null, cueMarks: [], me: null, link: null, start: null, end: null, userMoved: false };
+function initMap() {
+  const L = window.L;
+  if (!L) { $('#mapnote').hidden = false; $('#mapnote').textContent = 'The map could not load. Turn cues and distances still work.'; return; }
+  MV.map = L.map('map', { zoomControl: false, attributionControl: true });
+  MV.map.setView([43.8, -78.5], 8);
+  if (SITE) L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' }).addTo(MV.map);
+  else { $('#mapnote').hidden = false; $('#mapnote').textContent = 'Preview: street map shows on the live site'; }
+  MV.map.on('dragstart', () => { V.follow = false; $('#recenter').setAttribute('aria-pressed', 'false'); });
+}
+function drawLeg() {
+  const L = window.L, m = MV.map; if (!m) return;
+  [MV.base, MV.done, MV.todo, MV.link, MV.start, MV.end, ...MV.other, ...MV.cueMarks].forEach(x => x && x.remove());
+  MV.other = []; MV.cueMarks = [];
+  [V.leg - 1, V.leg + 1].forEach(n => { const p = S.routes[n]; if (p && p.length > 1) MV.other.push(L.polyline(p, { color: cssVar('--route-other'), weight: 4, interactive: false }).addTo(m)); });
+  const path = S.routes[V.leg] || [];
+  if (path.length < 2) return;
+  MV.done = L.polyline([], { color: cssVar('--route-done'), weight: 7, lineCap: 'round', interactive: false }).addTo(m);
+  MV.todo = L.polyline(path, { color: cssVar('--route'), weight: 7, lineCap: 'round', lineJoin: 'round', interactive: false }).addTo(m);
+  V.cues.forEach(c => MV.cueMarks.push(L.marker(c.ll, { icon: L.divIcon({ className: '', html: '<div class="cue-dot"></div>', iconSize: [14, 14], iconAnchor: [7, 7] }), interactive: false }).addTo(m)));
+  MV.start = L.marker(path[0], { icon: L.divIcon({ className: '', html: '<span class="flag">Start L' + V.leg + '</span>', iconSize: null, iconAnchor: [-8, 10] }), interactive: false }).addTo(m);
+  MV.end = L.marker(path[path.length - 1], { icon: L.divIcon({ className: '', html: '<span class="flag">Exchange</span>', iconSize: null, iconAnchor: [-8, 10] }), interactive: false }).addTo(m);
+  if (!V.fix) m.fitBounds(L.latLngBounds(path), { padding: [24, 24] });
+}
+function placeMe() {
+  const L = window.L, m = MV.map; if (!m || !V.fix) return;
+  if (!MV.me) MV.me = L.marker(V.fix, { icon: L.divIcon({ className: '', html: '<div class="me-dot"></div>', iconSize: [22, 22], iconAnchor: [11, 11] }), zIndexOffset: 1000, interactive: false }).addTo(m);
+  else MV.me.setLatLng(V.fix);
+  if (V.s != null && V.route.len) {
+    const path = V.route.path, here = NavCore.pointAt(V.route, V.s);
+    MV.done.setLatLngs([...path.slice(0, here.i + 1), here.ll]);
+    MV.todo.setLatLngs([here.ll, ...path.slice(here.i + 1)]);
+  }
+  if (MV.link) { MV.link.remove(); MV.link = null; }
+  if (V.off > 40 && V.near) MV.link = L.polyline([V.fix, V.near], { color: cssVar('--bad'), weight: 3, dashArray: '6 6', interactive: false }).addTo(m);
+  if (V.follow) m.setView(V.fix, Math.max(m.getZoom(), 16), { animate: true });
+}
+
+// ---- position and cues ------------------------------------------------------
+function onFix(ll, acc) {
+  V.fix = ll; V.acc = acc;
+  const hit = V.route && V.route.len ? NavCore.locate(V.route, ll, V.s) : null;
+  if (hit) {
+    V.off = hit.off; V.toRoute = hit.toRoute;
+    V.near = NavCore.pointAt(V.route, hit.s).ll;
+    // Progress only moves forward unless the rider is clearly somewhere else on the leg.
+    if (V.s == null || hit.s > V.s - 40 || Math.abs(hit.s - V.s) > 300) V.s = hit.s;
+  }
+  placeMe(); update();
+}
+function arrowSvg(kind, ang) {
+  if (kind === 'check') return '<svg viewBox="0 0 76 76"><circle cx="38" cy="38" r="31" fill="none" stroke="currentColor" stroke-width="6"/><path d="M38 20v22" stroke="currentColor" stroke-width="7" stroke-linecap="round"/><circle cx="38" cy="54" r="4.5" fill="currentColor"/></svg>';
+  if (kind === 'end') return '<svg viewBox="0 0 76 76"><path d="M20 66V10" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><path d="M20 12h36l-8 11 8 11H20" fill="currentColor"/></svg>';
+  if (kind === 'u') { const f = ang < 0 ? '' : ' transform="translate(76 0) scale(-1 1)"'; return '<svg viewBox="0 0 76 76"><g' + f + '><path d="M50 68V34a14 14 0 0 0-28 0v14" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round"/><path d="M10 44l12 16 12-16z" fill="currentColor"/></g></svg>'; }
+  const a = kind === 'straight' ? 0 : Math.max(-150, Math.min(150, ang));
+  // A bent arrow: the stem comes from below, the head points along the new direction.
+  return '<svg viewBox="0 0 76 76"><path d="M38 70V40" stroke="currentColor" stroke-width="8" stroke-linecap="round"/><g transform="rotate(' + a + ' 38 40)"><path d="M38 40V18" stroke="currentColor" stroke-width="8" stroke-linecap="round"/><path d="M24 22L38 6l14 16z" fill="currentColor"/></g></svg>';
+}
+function backArrow(bearing) { return '<svg viewBox="0 0 76 76"><g transform="rotate(' + bearing + ' 38 38)"><path d="M38 66V20" stroke="currentColor" stroke-width="8" stroke-linecap="round"/><path d="M22 26L38 6l16 20z" fill="currentColor"/></g><text x="38" y="74" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor" font-family="sans-serif">N↑</text></svg>'; }
+function update() {
+  const rt = V.route; const sign = $('#sign');
+  if (!rt || !rt.len) { sign.className = 'sign idle'; $('#arrow').innerHTML = arrowSvg('check'); $('#cueDist').textContent = 'No route'; $('#cueWhat').textContent = 'This leg has no route line. Use Leg info.'; $('#cueThen').textContent = ''; return; }
+  const L = legOf(V.leg);
+  const s = V.s == null ? 0 : V.s, left = Math.max(0, rt.len - s);
+  // Stats strip
+  $('#toEx').innerHTML = (V.s == null ? fmtD(rt.len) : fmtD(left)) + ' <small>to exchange</small>';
+  const nCue = V.cues.filter(c => c.s > s + 5).length;
+  $('#side').innerHTML = (V.s == null ? 'Route ' + fmtD(rt.len) : fmtD(s) + ' done') + '<br>' + nCue + ' turn' + (nCue === 1 ? '' : 's') + ' left' + (V.acc > 60 ? ' · weak GPS' : '');
+  $('#prog').style.width = Math.min(100, s / rt.len * 100) + '%';
+  if (!V.nav) { sign.className = 'sign idle'; const c0 = V.cues[0]; $('#arrow').innerHTML = arrowSvg(c0 ? c0.kind : 'straight', c0 ? c0.ang : 0); $('#cueDist').textContent = 'Leg ' + V.leg; $('#cueWhat').textContent = V.cues.length + ' turns · ' + fmtD(rt.len); $('#cueThen').textContent = L && L.exchange ? 'To ' + L.exchange : ''; return; }
+  if (V.s == null) { sign.className = 'sign idle'; $('#arrow').innerHTML = arrowSvg('check'); $('#cueDist').textContent = 'Finding GPS'; $('#cueWhat').textContent = 'Hold still a moment'; $('#cueThen').textContent = ''; return; }
+  // Off route?
+  const offNow = V.off > 45 && !(V.acc > 60);
+  if (offNow) { if (!V.offSince) V.offSince = Date.now(); } else { V.offSince = 0; V.offAlerted = false; }
+  if (offNow && Date.now() - V.offSince > 3000) {
+    sign.className = 'sign off';
+    $('#arrow').innerHTML = backArrow(V.toRoute || 0);
+    $('#cueDist').textContent = 'Off route';
+    $('#cueWhat').textContent = fmtD(V.off) + ' away';
+    $('#cueThen').textContent = 'The route is to the ' + compass(V.toRoute || 0) + '. Follow the red dashes.';
+    if (!V.offAlerted) { V.offAlerted = true; alertOff(); }
+    return;
+  }
+  sign.className = 'sign';
+  const next = V.cues.find(c => c.s > s + 5);
+  if (left < 40) { $('#arrow').innerHTML = arrowSvg('end'); $('#cueDist').textContent = 'Exchange'; $('#cueWhat').textContent = L && L.exchange ? L.exchange : 'Hand off to the next runner'; $('#cueThen').textContent = 'The next leg opens when the handoff is tapped in the tracker.'; return; }
+  if (!next) { $('#arrow').innerHTML = arrowSvg('end'); $('#cueDist').textContent = fmtD(left); $('#cueWhat').textContent = 'Straight on to the exchange'; $('#cueThen').textContent = L && L.exchange ? L.exchange : ''; return; }
+  const dd = next.s - s;
+  $('#arrow').innerHTML = arrowSvg(next.kind, next.ang);
+  $('#cueDist').textContent = fmtD(dd);
+  $('#cueWhat').textContent = NavCore.cueText(next.kind);
+  const after = V.cues.find(c => c.s > next.s + 5);
+  $('#cueThen').textContent = after ? 'Then ' + NavCore.cueText(after.kind).toLowerCase() + ' ' + fmtD(after.s - next.s) + ' later' : 'Then ' + fmtD(rt.len - next.s) + ' to the exchange';
+  if (dd < 120 && V.lastCue !== next.s) { V.lastCue = next.s; chime(); }
+}
+
+// ---- alerts -----------------------------------------------------------------
+let AC = null;
+function audio() { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); } catch (e) { AC = null; } return AC; }
+function tone(freq, t0, dur) { const a = audio(); if (!a) return; const o = a.createOscillator(), g = a.createGain(); o.frequency.value = freq; o.type = 'sine'; g.gain.setValueAtTime(0.0001, a.currentTime + t0); g.gain.exponentialRampToValueAtTime(0.4, a.currentTime + t0 + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + t0 + dur); o.connect(g).connect(a.destination); o.start(a.currentTime + t0); o.stop(a.currentTime + t0 + dur + 0.05); }
+function chime() { if (!V.sound) return; tone(880, 0, .18); tone(1175, .2, .25); try { navigator.vibrate && navigator.vibrate(120); } catch (e) {} }
+function alertOff() { if (V.sound) { tone(440, 0, .3); tone(330, .35, .4); tone(440, .8, .3); } try { navigator.vibrate && navigator.vibrate([300, 150, 300, 150, 300]); } catch (e) {} }
+
+// ---- wake lock, GPS, practice ride -------------------------------------------
+let wake = null;
+async function keepAwake() { try { if ('wakeLock' in navigator && !document.hidden) { wake = await navigator.wakeLock.request('screen'); } } catch (e) {} }
+document.addEventListener('visibilitychange', () => { if (!document.hidden && V.nav) keepAwake(); });
+let watchId = null, simT = null;
+function stopNav() { if (watchId != null) { navigator.geolocation.clearWatch(watchId); watchId = null; } clearInterval(simT); simT = null; V.nav = null; V.s = null; V.fix = null; if (MV.me) { MV.me.remove(); MV.me = null; } if (MV.link) { MV.link.remove(); MV.link = null; } try { wake && wake.release(); } catch (e) {} wake = null; $('#startBtn').textContent = 'Start'; drawLeg(); update(); }
+function startGps() {
+  if (!('geolocation' in navigator)) { toast('This browser cannot share your location.'); return; }
+  audio(); keepAwake(); V.nav = 'gps'; V.follow = true; $('#recenter').setAttribute('aria-pressed', 'true'); $('#startBtn').textContent = 'Stop'; update();
+  watchId = navigator.geolocation.watchPosition(
+    p => onFix([p.coords.latitude, p.coords.longitude], p.coords.accuracy),
+    e => { toast(e.code === 1 ? 'Location is blocked. Allow location for this site in your browser settings.' : 'No GPS signal yet. Keep the phone where it can see the sky.'); if (e.code === 1) stopNav(); },
+    { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
+}
+function startSim() {
+  clearInterval(simT); audio(); keepAwake();
+  V.nav = 'sim'; V.s = null; V.follow = true; $('#recenter').setAttribute('aria-pressed', 'true'); $('#startBtn').textContent = 'Stop';
+  const rt = V.route; if (!rt || !rt.len) return;
+  // 20 km/h, played 12x faster; a detour 35-40% of the way along shows the off-route warning.
+  let s = 0; const step = 20 / 3.6 * 12 * 0.5;
+  simT = setInterval(() => {
+    s += step; if (s > rt.len) { clearInterval(simT); simT = null; toast('Practice ride finished at the exchange.'); return; }
+    let ll = NavCore.pointAt(rt, s).ll;
+    const f = s / rt.len;
+    if (f > 0.35 && f < 0.40) { const k = Math.sin((f - 0.35) / 0.05 * Math.PI) * 0.0011; ll = [ll[0] + k, ll[1] + k]; }
+    onFix(ll, 8);
+  }, 500);
+  update();
+}
+
+// ---- leg info drawer ----------------------------------------------------------
+function openInfo() {
+  const L = legOf(V.leg) || { n: V.leg }; const d = S.dirs[V.leg] || {}; const path = S.routes[V.leg] || [];
+  const end = path[path.length - 1];
+  const runner = runnerName((S.cfg.plan || {})[V.leg]);
+  const s = V.s || 0;
+  const cueRows = V.cues.map((c, i) => `<li><button data-cue="${i}" class="${c.s < s ? 'past' : ''}"><span class="km">${(c.s / 1000).toFixed(2)} km</span>${arrowSvg(c.kind, c.ang)}<span>${esc(NavCore.cueText(c.kind))}</span></button></li>`).join('');
+  const notes = [L.note, L.teamNote].filter(Boolean);
+  $('#drawerIn').innerHTML = `
+    <button class="ibtn close" id="dClose" aria-label="Close">✕</button>
+    <div><h2>Leg ${V.leg}: ${esc(L.name || d.title || '')}</h2><div class="meta">${esc(L.km || '')} km${runner ? ' · ' + esc(runner) : ''}${L.exchange ? ' · to ' + esc(L.exchange) : ''}</div></div>
+    ${notes.length ? `<div>${notes.map(n => `<div class="upd">${esc(n)}</div>`).join('')}</div>` : ''}
+    <div class="links">
+      ${end ? `<a href="https://www.google.com/maps/dir/?api=1&destination=${end[0]},${end[1]}&travelmode=bicycling" target="_blank" rel="noopener">Exchange in Google Maps</a>` : ''}
+      ${L.routeUrl ? `<a href="${esc(L.routeUrl)}" target="_blank" rel="noopener">Strava route</a>` : ''}
+    </div>
+    <div><h3>Turns on this leg</h3>${V.cues.length ? `<ul class="cuelist">${cueRows}</ul>` : '<p class="meta">No turns detected. Follow the map.</p>'}<p class="meta" style="margin-top:6px">Worked out from the route's shape. Tap one to see it on the map.</p></div>
+    <div><h3>Booklet directions</h3>${(d.update || []).map(u => `<div class="upd">${esc(u)}</div>`).join('')}${d.dir && d.dir.length ? `<ol>${d.dir.map(x => `<li>${esc(x)}</li>`).join('')}</ol>` : '<p class="meta">No written directions for this leg.</p>'}</div>`;
+  $('#drawer').hidden = false;
+  $('#dClose').onclick = () => $('#drawer').hidden = true;
+  $('#drawerIn').querySelectorAll('[data-cue]').forEach(b => b.onclick = () => { const c = V.cues[+b.dataset.cue]; $('#drawer').hidden = true; V.follow = false; $('#recenter').setAttribute('aria-pressed', 'false'); MV.map && MV.map.setView(c.ll, 17); });
+}
+
+// ---- controls ---------------------------------------------------------------
+$('#prev').onclick = () => setLeg(V.leg - 1, true);
+$('#next').onclick = () => setLeg(V.leg + 1, true);
+$('#mode').onclick = () => { if (V.pinned) { V.pinned = false; const l = liveLeg(); if (l) setLeg(l.n, false); toast('Following the live leg'); } };
+$('#info').onclick = openInfo;
+$('#recenter').onclick = () => { V.follow = true; $('#recenter').setAttribute('aria-pressed', 'true'); if (V.fix) MV.map.setView(V.fix, Math.max(MV.map.getZoom(), 16)); else if (S.routes[V.leg]) MV.map.fitBounds(window.L.latLngBounds(S.routes[V.leg]), { padding: [24, 24] }); };
+V.sound = store.get('nav.sound') !== 'off'; $('#sound').setAttribute('aria-pressed', String(V.sound));
+$('#sound').onclick = () => { V.sound = !V.sound; store.set('nav.sound', V.sound ? 'on' : 'off'); $('#sound').setAttribute('aria-pressed', String(V.sound)); if (V.sound) chime(); toast(V.sound ? 'Sound alerts on' : 'Sound alerts off'); };
+const th = store.get('nav.theme'); if (th) document.documentElement.dataset.theme = th;
+$('#theme').onclick = () => {
+  const dark = document.documentElement.dataset.theme ? document.documentElement.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  const t = dark ? 'light' : 'dark'; document.documentElement.dataset.theme = t; store.set('nav.theme', t); drawLeg(); placeMe();
+};
+$('#startBtn').onclick = () => { if (V.nav) stopNav(); else $('#startOv').hidden = false; };
+$('#goGps').onclick = () => { $('#startOv').hidden = true; startGps(); };
+$('#goSim').onclick = () => { $('#startOv').hidden = true; startSim(); };
+$('#goClose').onclick = () => { $('#startOv').hidden = true; };
+if (!SITE) { $('#goGps').hidden = true; $('#startP').textContent = 'This preview cannot use GPS. Try a practice ride along the leg; on the live site, Start navigating uses your phone\'s GPS.'; }
+
+initMap();
+if (SITE) loadSite(); else loadMock();
+setInterval(() => { if (S.ready) onData(); }, 15000);
+})();
+</script>
+
+</body>
+</html>
