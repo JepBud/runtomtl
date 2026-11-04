@@ -716,6 +716,15 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .chip { font-family: var(--display); font-weight: 700; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); background: var(--surface); white-space: nowrap; }
 .chip.live { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent); }
 .chip.pin { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, transparent); }
+.chip.share { color: var(--sign-ink); background: var(--ok); border-color: transparent; }
+.chip.share.weak { background: var(--warn); }
+.field { display: grid; gap: 4px; }
+.field label { font-weight: 700; font-size: 14px; }
+.field input, .field select { min-height: 48px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); padding: 0 12px; font: inherit; font-size: 17px; }
+.seg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.seg button { min-height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); font-weight: 700; }
+.seg button[aria-pressed="true"] { background: var(--sign); color: var(--sign-ink); border-color: var(--sign-2); }
+.err { color: var(--bad); font-weight: 700; margin: 0; }
 .ibtn { width: 48px; height: 48px; flex: none; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; font-size: 22px; line-height: 1; }
 .ibtn svg { width: 22px; height: 22px; }
 .ibtn[aria-pressed="true"] { background: var(--sign); color: var(--sign-ink); border-color: var(--sign-2); }
@@ -791,6 +800,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   <div class="legbar gut">
     <button class="ibtn" id="prev" aria-label="Previous leg">‹</button>
     <div class="who"><b id="legTitle">Leg –</b><span id="legSub">Loading the race…</span></div>
+    <span class="chip share" id="shareChip" hidden>Sharing</span>
     <span class="chip" id="mode">…</span>
     <button class="ibtn" id="next" aria-label="Next leg">›</button>
   </div>
@@ -812,6 +822,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
     <div class="btns">
       <button class="btn" id="info">Leg info</button>
       <button class="ibtn" id="sound" aria-label="Sound alerts" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg></button>
+      <button class="ibtn" id="share" aria-label="Share my location with spectators" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0C18.5 14.8 12 21 12 21z"/><circle cx="12" cy="10" r="2.4"/></svg></button>
       <button class="ibtn" id="theme" aria-label="Switch light or dark">◐</button>
       <button class="btn primary" id="startBtn">Start</button>
     </div>
@@ -833,6 +844,18 @@ button { font: inherit; color: inherit; cursor: pointer; }
   </div>
 </div>
 
+<div class="overlay" id="shareOv" hidden>
+  <div class="card">
+    <h1>Share my location</h1>
+    <p>Crew only. Friends and family following the race see your position on the live page while this is on. It stops when you tap the pin button again or close this page.</p>
+    <div class="field"><label for="shName">Name shown on the map</label><input id="shName" maxlength="30" autocomplete="nickname" placeholder="e.g. Jeff"></div>
+    <div class="field"><label>I am on</label><div class="seg" id="shKind"><button data-k="cyclist" aria-pressed="true">Bike</button><button data-k="runner" aria-pressed="false">Foot</button><button data-k="car" aria-pressed="false">Car</button><button data-k="rv" aria-pressed="false">RV</button></div></div>
+    <div class="field"><label for="shPin">Team PIN</label><input id="shPin" type="password" autocomplete="off" inputmode="text"></div>
+    <p class="err" id="shErr" hidden></p>
+    <button class="btn primary" id="shGo">Start sharing</button>
+    <button class="btn" id="shCancel">Cancel</button>
+  </div>
+</div>
 <div class="drawer gut" id="drawer" hidden><div class="in" id="drawerIn"></div></div>
 <div class="toast" id="toast" hidden></div>
 
@@ -1229,6 +1252,7 @@ const NavCore = (() => {
 <script>
 (() => {
 const SITE = !!window.RTM_CONFIG;
+let SB = null;
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -1255,6 +1279,7 @@ async function loadSite() {
   S.routes = routes; S.dirs = dirs;
   if (!window.supabase) { S.offline = true; return; }
   const sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey, { auth: { persistSession: false } });
+  SB = sb;
   const pull = async () => {
     try {
       const { data, error } = await sb.from('race_docs').select('collection,id,data').limit(5000);
@@ -1430,9 +1455,9 @@ function alertOff() { if (V.sound) { tone(440, 0, .3); tone(330, .35, .4); tone(
 // ---- wake lock, GPS, practice ride -------------------------------------------
 let wake = null;
 async function keepAwake() { try { if ('wakeLock' in navigator && !document.hidden) { wake = await navigator.wakeLock.request('screen'); } } catch (e) {} }
-document.addEventListener('visibilitychange', () => { if (!document.hidden && V.nav) keepAwake(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && (V.nav || (typeof SH !== 'undefined' && SH.on))) keepAwake(); });
 let watchId = null, simT = null;
-function stopNav() { if (watchId != null) { navigator.geolocation.clearWatch(watchId); watchId = null; } clearInterval(simT); simT = null; V.nav = null; V.s = null; V.fix = null; if (MV.me) { MV.me.remove(); MV.me = null; } if (MV.link) { MV.link.remove(); MV.link = null; } try { wake && wake.release(); } catch (e) {} wake = null; $('#startBtn').textContent = 'Start'; drawLeg(); update(); }
+function stopNav() { if (watchId != null) { navigator.geolocation.clearWatch(watchId); watchId = null; } clearInterval(simT); simT = null; V.nav = null; V.s = null; V.fix = null; if (MV.me) { MV.me.remove(); MV.me = null; } if (MV.link) { MV.link.remove(); MV.link = null; } if (!SH.on) { try { wake && wake.release(); } catch (e) {} wake = null; } $('#startBtn').textContent = 'Start'; drawLeg(); update(); }
 function startGps() {
   if (!('geolocation' in navigator)) { toast('This browser cannot share your location.'); return; }
   audio(); keepAwake(); V.nav = 'gps'; V.follow = true; $('#recenter').setAttribute('aria-pressed', 'true'); $('#startBtn').textContent = 'Stop'; update();
@@ -1497,6 +1522,70 @@ $('#startBtn').onclick = () => { if (V.nav) stopNav(); else $('#startOv').hidden
 $('#goGps').onclick = () => { $('#startOv').hidden = true; startGps(); };
 $('#goSim').onclick = () => { $('#startOv').hidden = true; startSim(); };
 $('#goClose').onclick = () => { $('#startOv').hidden = true; };
+
+// ---- location sharing (crew only, needs the team PIN) ------------------------
+// Uses its own GPS watch, so practice rides are never shared. Sends the latest fix every 10 s.
+const SH = { on: false, watch: null, timer: null, fix: null, kind: store.get('nav.share.kind') || 'cyclist', id: null, failing: 0 };
+function shareId() { let id = store.get('nav.share.id'); if (!id || id.length < 8) { id = 'p' + Math.random().toString(36).slice(2, 12) + Date.now().toString(36); store.set('nav.share.id', id); } return id; }
+function shareChip() {
+  const c = $('#shareChip'); c.hidden = !SH.on;
+  c.className = 'chip share' + (SH.failing ? ' weak' : '');
+  c.textContent = SH.failing ? 'Sharing · no signal' : 'Sharing';
+  $('#share').setAttribute('aria-pressed', String(SH.on));
+}
+async function sendPing() {
+  if (!SH.on || !SH.fix || !SB) return;
+  const f = SH.fix;
+  const { error } = await SB.rpc('rtm_ping', { p_pin: SH.pin, p_id: SH.id, p_label: SH.name, p_kind: SH.kind, p_leg: V.leg || null, p_lat: f.lat, p_lon: f.lon, p_acc: f.acc, p_heading: f.heading, p_speed: f.speed });
+  if (error) {
+    if (/pin/i.test(error.message || '')) { stopShare(false); toast('That PIN did not work. Sharing stopped.'); return; }
+    SH.failing++;
+  } else SH.failing = 0;
+  shareChip();
+}
+async function startShare(name, kind, pin) {
+  if (!SB) { toast('Sharing works on the live site.'); return; }
+  if (!('geolocation' in navigator)) { toast('This browser cannot share your location.'); return; }
+  const { data, error } = await SB.rpc('rtm_check_pin', { p_pin: pin });
+  if (error) { $('#shErr').hidden = false; $('#shErr').textContent = 'Could not check the PIN. Check your signal and try again.'; return; }
+  if (data !== true) { $('#shErr').hidden = false; $('#shErr').textContent = 'That PIN is not right.'; return; }
+  Object.assign(SH, { on: true, name, kind, pin, id: shareId(), failing: 0, fix: null });
+  store.set('nav.share.name', name); store.set('nav.share.kind', kind); store.set('nav.share.pin', pin);
+  $('#shareOv').hidden = true; keepAwake(); shareChip();
+  SH.watch = navigator.geolocation.watchPosition(p => {
+    const first = !SH.fix;
+    SH.fix = { lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy, heading: Number.isFinite(p.coords.heading) ? p.coords.heading : null, speed: Number.isFinite(p.coords.speed) ? p.coords.speed : null };
+    if (first) sendPing();
+  }, e => { if (e.code === 1) { stopShare(false); toast('Location is blocked. Allow location for this site in your browser settings.'); } }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 });
+  SH.timer = setInterval(sendPing, 10000);
+  toast('Sharing your location. Keep this page open.');
+}
+function stopShare(remove = true) {
+  if (SH.watch != null) navigator.geolocation.clearWatch(SH.watch);
+  clearInterval(SH.timer);
+  const was = SH.on; Object.assign(SH, { on: false, watch: null, timer: null, fix: null, failing: 0 });
+  if (was && remove && SB) SB.rpc('rtm_unping', { p_pin: SH.pin, p_id: SH.id }).then(() => {}, () => {});
+  if (!V.nav) { try { wake && wake.release(); } catch (e) {} wake = null; }
+  shareChip();
+}
+$('#share').onclick = () => {
+  if (SH.on) { stopShare(true); toast('Stopped sharing your location.'); return; }
+  if (!SITE) { toast('Sharing works on the live site, with the team PIN.'); return; }
+  $('#shName').value = store.get('nav.share.name') || '';
+  $('#shPin').value = store.get('nav.share.pin') || store.get('rtm.pin') || '';
+  $('#shKind').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.k === SH.kind)));
+  $('#shErr').hidden = true; $('#shareOv').hidden = false;
+};
+$('#shKind').querySelectorAll('button').forEach(b => b.onclick = () => { SH.kind = b.dataset.k; $('#shKind').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
+$('#shCancel').onclick = () => { $('#shareOv').hidden = true; };
+$('#shGo').onclick = async () => {
+  const name = $('#shName').value.trim(), pin = $('#shPin').value.trim();
+  if (!name) { $('#shErr').hidden = false; $('#shErr').textContent = 'Add the name people will see on the map.'; return; }
+  if (!pin) { $('#shErr').hidden = false; $('#shErr').textContent = 'Enter the team PIN.'; return; }
+  $('#shGo').disabled = true; $('#shGo').textContent = 'Checking…';
+  try { await startShare(name, SH.kind, pin); } finally { $('#shGo').disabled = false; $('#shGo').textContent = 'Start sharing'; }
+};
+window.addEventListener('pagehide', () => { if (SH.on && SB) { try { SB.rpc('rtm_unping', { p_pin: SH.pin, p_id: SH.id }); } catch (e) {} } });
 if (!SITE) { $('#goGps').hidden = true; $('#startP').textContent = 'This preview cannot use GPS. Try a practice ride along the leg; on the live site, Start navigating uses your phone\'s GPS.'; }
 
 initMap();
