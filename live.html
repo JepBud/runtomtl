@@ -1276,6 +1276,10 @@ function initMap() {
   if (SITE) L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' }).addTo(MV.map);
   else { $('#mapnote').hidden = false; $('#mapnote').textContent = 'Preview: street map shows on the live site'; }
   MV.map.on('dragstart', () => setFollow(false));
+  // The layout settles after fonts and the sticky header load; resize the map to its final box.
+  const fix = () => MV.map && MV.map.invalidateSize({ pan: false });
+  window.addEventListener('resize', fix); window.addEventListener('load', fix); [100, 600, 1500].forEach(t => setTimeout(fix, t));
+  try { new ResizeObserver(fix).observe(document.getElementById('map')); } catch (e) {}
 }
 function setFollow(on) { MV.follow = on; $('#bFollow').setAttribute('aria-pressed', String(on)); $('#bAll').setAttribute('aria-pressed', 'false'); }
 function drawRoute(cur) {
